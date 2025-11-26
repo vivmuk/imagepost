@@ -42,11 +42,18 @@ You can also customize these (defaults will be used if not set):
 
 ## Step 3: Configure Build Settings
 
-Railway should auto-detect Python, but verify:
+Railway will automatically detect the `Procfile` which specifies:
+```
+web: uvicorn server:app --host 0.0.0.0 --port $PORT
+```
+
+If you need to manually configure:
 
 1. Go to **Settings** → **Build**
 2. **Build Command**: (leave empty or use `pip install -r requirements.txt`)
 3. **Start Command**: `uvicorn server:app --host 0.0.0.0 --port $PORT`
+
+**Note**: The `Procfile` is already included in the repository, so Railway should auto-detect it.
 
 ## Step 4: Deploy
 
