@@ -33,6 +33,7 @@ class StructuredSummary:
     key_takeaways: list[str]
     sections: list[SectionSummary]
     detailed_analysis: str
+    limitations_and_biases: str  # Type 2 thinking: critical analysis of limitations and cognitive biases
     source: str
     word_count: int
 
@@ -82,6 +83,13 @@ class VeniceSummarizer:
                 content, key_takeaways, sections
             )
             progress.update(task3, completed=True)
+            
+            # Stage 4: Generate limitations and biases analysis
+            task4 = progress.add_task("Analyzing limitations and biases...", total=None)
+            limitations_and_biases = await self._analyze_limitations_and_biases(
+                content, executive_summary, detailed_analysis
+            )
+            progress.update(task4, completed=True)
         
         return StructuredSummary(
             title=content.title,
@@ -89,6 +97,7 @@ class VeniceSummarizer:
             key_takeaways=key_takeaways,
             sections=sections,
             detailed_analysis=detailed_analysis,
+            limitations_and_biases=limitations_and_biases,
             source=content.source,
             word_count=content.word_count
         )
@@ -299,6 +308,115 @@ Generate:
         except (json.JSONDecodeError, KeyError):
             return response[:1000] if response else "Summary unavailable", ""
     
+    async def _analyze_limitations_and_biases(
+        self,
+        content: ExtractedContent,
+        executive_summary: str,
+        detailed_analysis: str
+    ) -> str:
+        """Generate Type 2 thinking analysis: limitations, cognitive biases, and critical evaluation"""
+        
+        schema = {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "limitations_analysis",
+                "strict": True,
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "methodological_limitations": {
+                            "type": "array",
+                            "items": {"type": "string"}
+                        },
+                        "cognitive_biases": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "bias_name": {"type": "string"},
+                                    "description": {"type": "string"},
+                                    "impact": {"type": "string"}
+                                },
+                                "required": ["bias_name", "description", "impact"],
+                                "additionalProperties": False
+                            }
+                        },
+                        "missing_perspectives": {
+                            "type": "array",
+                            "items": {"type": "string"}
+                        },
+                        "critical_evaluation": {"type": "string"}
+                    },
+                    "required": ["methodological_limitations", "cognitive_biases", "missing_perspectives", "critical_evaluation"],
+                    "additionalProperties": False
+                }
+            }
+        }
+        
+        prompt = f"""Perform a critical Type 2 thinking analysis of this content. Apply System 2 thinking (slow, deliberate, analytical) to identify limitations, cognitive biases, and potential blind spots.
+
+CONTENT TITLE: {content.title}
+
+EXECUTIVE SUMMARY:
+{executive_summary[:1000]}
+
+DETAILED ANALYSIS:
+{detailed_analysis[:1500]}
+
+ORIGINAL CONTENT PREVIEW:
+{content.text[:3000]}
+
+Analyze from the perspective of a top-tier management consultant who thinks critically about:
+1. Methodological limitations (sample size, data quality, research design, generalizability)
+2. Cognitive biases present in the content (confirmation bias, availability heuristic, survivorship bias, anchoring, framing effects, etc.)
+3. Missing perspectives or alternative viewpoints
+4. Critical evaluation of claims and evidence
+
+For each cognitive bias identified, explain:
+- The specific bias and how it manifests in the content
+- The potential impact on the conclusions drawn
+- How to mitigate or account for this bias
+
+Provide a thoughtful, balanced critical analysis that would help decision-makers understand what to be cautious about."""
+        
+        response = await self._call_venice_api(prompt, schema)
+        
+        try:
+            data = json.loads(response)
+            
+            limitations = data.get("methodological_limitations", [])
+            biases = data.get("cognitive_biases", [])
+            missing = data.get("missing_perspectives", [])
+            evaluation = data.get("critical_evaluation", "")
+            
+            result = "## Critical Analysis: Limitations and Cognitive Biases\n\n"
+            
+            if limitations:
+                result += "### Methodological Limitations\n\n"
+                for lim in limitations:
+                    result += f"• {lim}\n"
+                result += "\n"
+            
+            if biases:
+                result += "### Cognitive Biases Identified\n\n"
+                for bias in biases:
+                    result += f"**{bias['bias_name']}**: {bias['description']}\n"
+                    result += f"*Impact*: {bias['impact']}\n\n"
+            
+            if missing:
+                result += "### Missing Perspectives\n\n"
+                for persp in missing:
+                    result += f"• {persp}\n"
+                result += "\n"
+            
+            if evaluation:
+                result += "### Critical Evaluation\n\n"
+                result += evaluation
+            
+            return result
+        except (json.JSONDecodeError, KeyError):
+            return "Critical analysis: Unable to parse limitations and biases analysis."
+    
     def _enhance_image_prompt(self, visual_concept: str, section_title: str) -> str:
         """Enhance the visual concept into a proper image generation prompt"""
         return (
@@ -350,7 +468,8 @@ Generate:
             "temperature": config.venice.temperature,
             "max_completion_tokens": config.venice.max_tokens,
             "venice_parameters": {
-                "include_venice_system_prompt": False
+                "include_venice_system_prompt": False,
+                "strip_thinking_response": True
             }
         }
         
