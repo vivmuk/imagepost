@@ -46,10 +46,15 @@ class ContentScraper:
         if source.startswith(('http://', 'https://')):
             return await self.extract_from_url(source)
         
-        # Check if it's a file path
-        path = Path(source)
-        if path.exists():
-            return await self.extract_from_file(path)
+        # Check if it's likely a file path (short enough)
+        if len(source) < 255:
+            try:
+                path = Path(source)
+                if path.exists():
+                    return await self.extract_from_file(path)
+            except OSError:
+                # If Path creation fails (e.g. invalid chars), treat as text
+                pass
         
         # Assume it's raw text
         return self.extract_from_text(source)
@@ -113,6 +118,14 @@ class ContentScraper:
         console.print("[cyan]Processing text input[/cyan]")
         
         text = self._clean_text(text)
+        
+        # If title is default, try to extract from first line
+        if title == "Direct Input":
+            first_line = text.split('\n')[0].strip()
+            # If first line looks like a title (not too long, has content)
+            if first_line and len(first_line) < 150:
+                title = first_line
+        
         sections = self._extract_sections_from_text(text)
         
         if len(text) > self.max_length:

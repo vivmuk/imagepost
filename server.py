@@ -57,7 +57,7 @@ class URLInput(BaseModel):
 class TextInput(BaseModel):
     """Text input for summarization"""
     text: str
-    title: str = "Document Summary"
+    title: Optional[str] = None
     generate_images: bool = True
     generate_hero: bool = True
     report_type: str = "executive"  # "executive" or "linkedin"
@@ -519,10 +519,6 @@ async def root():
 
             <div id="text-tab" class="tab-content">
                 <div class="input-group">
-                    <label>Report Title</label>
-                    <input type="text" id="textTitle" placeholder="E.g., Q3 Market Analysis">
-                </div>
-                <div class="input-group">
                     <label>Content</label>
                     <textarea id="textContent" placeholder="Paste article text, report content, or notes here..."></textarea>
                 </div>
@@ -644,7 +640,6 @@ async def root():
                     endpoint = '/api/summarize/text';
                     body = {
                         text: text,
-                        title: document.getElementById('textTitle').value || "Document Summary",
                         generate_images: document.getElementById('textImages').checked,
                         generate_hero: document.getElementById('textHero').checked,
                         report_type: document.querySelector('input[name="reportTypeText"]:checked').value
@@ -748,7 +743,6 @@ async def root():
             document.getElementById('inputSection').style.display = 'block';
             document.getElementById('urlInput').value = '';
             document.getElementById('textContent').value = '';
-            document.getElementById('textTitle').value = '';
         }
     </script>
 </body>
