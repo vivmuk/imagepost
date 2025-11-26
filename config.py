@@ -5,10 +5,17 @@ import os
 from pydantic import BaseModel
 from typing import Optional
 
+# Try to load from .env file if available (for local development)
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # dotenv not required, will use environment variables or defaults
+
 
 class VeniceConfig(BaseModel):
     """Venice API Configuration"""
-    api_key: str = "lnWNeSg0pA_rQUooNpbfpPDBaj2vJnWol5WqKWrIEF"
+    api_key: str = os.getenv("VENICE_API_KEY", "lnWNeSg0pA_rQUooNpbfpPDBaj2vJnWol5WqKWrIEF")
     base_url: str = "https://api.venice.ai/api/v1"
     
     # Model selection for different tasks
