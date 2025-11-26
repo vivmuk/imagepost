@@ -51,6 +51,7 @@ class URLInput(BaseModel):
     url: HttpUrl
     generate_images: bool = True
     generate_hero: bool = True
+    report_type: str = "executive"  # "executive" or "linkedin"
 
 
 class TextInput(BaseModel):
@@ -59,6 +60,7 @@ class TextInput(BaseModel):
     title: str = "Document Summary"
     generate_images: bool = True
     generate_hero: bool = True
+    report_type: str = "executive"  # "executive" or "linkedin"
 
 
 class ReportStatus(BaseModel):
@@ -262,6 +264,31 @@ async def root():
             resize: vertical;
         }
 
+        /* Radio Cards */
+        .radio-cards {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .radio-card {
+            flex: 1;
+            background: #fff;
+            border: 2px solid var(--border);
+            padding: 1.5rem;
+            cursor: pointer;
+            position: relative;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            transition: all 0.2s;
+        }
+        .radio-card:hover { border-color: #999; }
+        .radio-card.selected { border-color: var(--accent); background: rgba(220, 38, 38, 0.03); }
+        .radio-card input { display: none; }
+        .card-content { display: flex; flex-direction: column; }
+        .card-title { font-weight: 800; font-size: 0.95rem; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .card-desc { font-size: 0.85rem; color: #666; line-height: 1.5; font-weight: 400; }
+
         /* Checkbox */
         .checkbox-group {
             display: flex;
@@ -451,6 +478,26 @@ async def root():
                     <label>Article URL</label>
                     <input type="url" id="urlInput" placeholder="https://example.com/article">
                 </div>
+
+                <div class="input-group">
+                    <label>Output Format</label>
+                    <div class="radio-cards">
+                        <label class="radio-card selected" onclick="selectRadio(this)">
+                            <input type="radio" name="reportTypeUrl" value="executive" checked>
+                            <div class="card-content">
+                                <span class="card-title">Executive Report</span>
+                                <span class="card-desc">Deep-dive analysis with multiple sections & visuals.</span>
+                            </div>
+                        </label>
+                        <label class="radio-card" onclick="selectRadio(this)">
+                            <input type="radio" name="reportTypeUrl" value="linkedin">
+                            <div class="card-content">
+                                <span class="card-title">LinkedIn Article</span>
+                                <span class="card-desc">Viral article format with one consolidated visual.</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
                 
                 <div class="checkbox-group">
                     <label class="checkbox-wrapper">
@@ -478,6 +525,26 @@ async def root():
                 <div class="input-group">
                     <label>Content</label>
                     <textarea id="textContent" placeholder="Paste article text, report content, or notes here..."></textarea>
+                </div>
+
+                <div class="input-group">
+                    <label>Output Format</label>
+                    <div class="radio-cards">
+                        <label class="radio-card selected" onclick="selectRadio(this)">
+                            <input type="radio" name="reportTypeText" value="executive" checked>
+                            <div class="card-content">
+                                <span class="card-title">Executive Report</span>
+                                <span class="card-desc">Deep-dive analysis with multiple sections & visuals.</span>
+                            </div>
+                        </label>
+                        <label class="radio-card" onclick="selectRadio(this)">
+                            <input type="radio" name="reportTypeText" value="linkedin">
+                            <div class="card-content">
+                                <span class="card-title">LinkedIn Article</span>
+                                <span class="card-desc">Viral article format with one consolidated visual.</span>
+                            </div>
+                        </label>
+                    </div>
                 </div>
 
                 <div class="checkbox-group">
@@ -525,6 +592,15 @@ async def root():
     </div>
 
     <script>
+        function selectRadio(label) {
+            const groupName = label.querySelector('input').name;
+            document.querySelectorAll(`input[name="${groupName}"]`).forEach(input => {
+                input.closest('.radio-card').classList.remove('selected');
+            });
+            label.classList.add('selected');
+            label.querySelector('input').checked = true;
+        }
+
         function switchTab(type) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
@@ -558,9 +634,8 @@ async def root():
                     body = {
                         url: url,
                         generate_images: document.getElementById('urlImages').checked,
-                        generate_hero: document.getElementById('urlHero').checked
-                        // LinkedIn is checked but backend needs to know? 
-                        // Currently backend generates it by default if I added it to main flow.
+                        generate_hero: document.getElementById('urlHero').checked,
+                        report_type: document.querySelector('input[name="reportTypeUrl"]:checked').value
                     };
                 } else {
                     const text = document.getElementById('textContent').value;
@@ -571,7 +646,8 @@ async def root():
                         text: text,
                         title: document.getElementById('textTitle').value || "Document Summary",
                         generate_images: document.getElementById('textImages').checked,
-                        generate_hero: document.getElementById('textHero').checked
+                        generate_hero: document.getElementById('textHero').checked,
+                        report_type: document.querySelector('input[name="reportTypeText"]:checked').value
                     };
                 }
 
@@ -696,7 +772,8 @@ async def summarize_url(input_data: URLInput, background_tasks: BackgroundTasks)
         report_id=report_id,
         source=str(input_data.url),
         generate_images=input_data.generate_images,
-        generate_hero=input_data.generate_hero
+        generate_hero=input_data.generate_hero,
+        report_type=input_data.report_type
     )
     
     return ReportStatus(
@@ -718,7 +795,8 @@ async def summarize_text(input_data: TextInput, background_tasks: BackgroundTask
         source=input_data.text,
         generate_images=input_data.generate_images,
         generate_hero=input_data.generate_hero,
-        title=input_data.title
+        title=input_data.title,
+        report_type=input_data.report_type
     )
     
     return ReportStatus(
@@ -733,7 +811,8 @@ async def summarize_file(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     generate_images: bool = Form(True),
-    generate_hero: bool = Form(True)
+    generate_hero: bool = Form(True),
+    report_type: str = Form("executive")
 ):
     """Upload and generate a summary report from a file"""
     
@@ -762,7 +841,8 @@ async def summarize_file(
         report_id=report_id,
         source=str(temp_path),
         generate_images=generate_images,
-        generate_hero=generate_hero
+        generate_hero=generate_hero,
+        report_type=report_type
     )
     
     return ReportStatus(
@@ -839,7 +919,8 @@ async def generate_report_task(
     source: str,
     generate_images: bool = True,
     generate_hero: bool = True,
-    title: str = None
+    title: str = None,
+    report_type: str = "executive"
 ):
     """Background task to generate the report"""
     # Lazy imports to avoid blocking app startup
@@ -855,43 +936,82 @@ async def generate_report_task(
         report_generator = ReportGenerator()
         
         # Stage 1: Extract content
+        # Update status message directly in store if possible, or assume polling handles it? 
+        # server.py uses polling on get_status which reads from report_store.
+        # But here report_store[report_id] was init with {"status": "processing"}
+        # We should update the message field for polling to pick up.
+        report_store[report_id]["message"] = "Extracting content..."
+        
         content = await scraper.extract(source)
         if title:
             content.title = title
-        
-        # Stage 2: Summarize
-        summary = await summarizer.summarize(content)
-        
-        # Stage 3: Generate images
-        images = []
-        hero_image = None
-        
-        if generate_images:
-            images = await image_generator.generate_images_for_summary(summary)
             
-            if generate_hero:
-                hero_image = await image_generator.generate_hero_image(
-                    summary.title,
-                    summary.executive_summary
-                )
+        html = ""
         
-        # Stage 4: Generate HTML
-        html = report_generator.generate_report(
-            summary=summary,
-            images=images,
-            hero_image=hero_image,
-            embed_images=True
-        )
+        if report_type == "linkedin":
+            # --- LinkedIn Article Pipeline ---
+            
+            # Stage 2: Generate Article Content
+            report_store[report_id]["message"] = "Drafting LinkedIn Article..."
+            article_data = await summarizer.generate_linkedin_article_data(content)
+            
+            # Stage 3: Generate 1 Focused Visual
+            hero_image = None
+            if generate_images:
+                report_store[report_id]["message"] = "Creating Viral Visual..."
+                # Use the specific visual concept from the article generation
+                visual_prompt = article_data.get("visual_concept", f"Whimsical watercolor illustration of {content.title}")
+                hero_image = await image_generator.generate_hero_image(
+                    content.title,
+                    visual_prompt
+                )
+            
+            # Stage 4: Generate HTML Page
+            report_store[report_id]["message"] = "Compiling Article..."
+            html = report_generator.generate_linkedin_html(article_data, hero_image)
+            
+        else:
+            # --- Standard Executive Report Pipeline ---
+            
+            # Stage 2: Summarize
+            report_store[report_id]["message"] = "Analyzing & Summarizing..."
+            summary = await summarizer.summarize(content)
+            
+            # Stage 3: Generate images
+            images = []
+            hero_image = None
+            
+            if generate_images:
+                report_store[report_id]["message"] = "Generating Visuals..."
+                images = await image_generator.generate_images_for_summary(summary)
+                
+                if generate_hero:
+                    hero_image = await image_generator.generate_hero_image(
+                        summary.title,
+                        summary.executive_summary
+                    )
+            
+            # Stage 4: Generate HTML
+            report_store[report_id]["message"] = "Compiling Report..."
+            html = report_generator.generate_report(
+                summary=summary,
+                images=images,
+                hero_image=hero_image,
+                embed_images=True
+            )
         
         report_store[report_id] = {
             "status": "completed",
-            "result": html
+            "result": html,
+            "message": "Generation Complete!"
         }
         
     except Exception as e:
+        print(f"Error in generation: {e}")
         report_store[report_id] = {
             "status": "error",
-            "error": str(e)
+            "error": str(e),
+            "message": f"Error: {str(e)}"
         }
 
 

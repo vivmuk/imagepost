@@ -83,6 +83,71 @@ class ReportGenerator:
             console.print(f"[green]✓[/green] Report saved: {output_path}")
         
         return html
+
+    def _get_linkedin_template(self) -> Template:
+        return Template('''<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ headline }} | LinkedIn Article</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <style>
+        :root { --accent: #DC2626; --text: #111827; --bg: #ffffff; }
+        body { font-family: 'Montserrat', sans-serif; color: var(--text); line-height: 1.8; max-width: 800px; margin: 0 auto; padding: 40px 20px; }
+        h1 { font-size: 2.5rem; font-weight: 800; margin-bottom: 1rem; line-height: 1.2; }
+        h2 { font-size: 1.5rem; font-weight: 700; margin-top: 2rem; margin-bottom: 1rem; color: var(--accent); }
+        .intro { font-size: 1.2rem; color: #4b5563; margin-bottom: 2rem; border-left: 4px solid var(--accent); padding-left: 20px; }
+        .visual { width: 100%; border-radius: 8px; margin: 2rem 0; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        .point { margin-bottom: 2rem; }
+        .point-title { font-weight: 700; font-size: 1.2rem; margin-bottom: 0.5rem; }
+        .cta { background: #f9fafb; padding: 2rem; border-radius: 8px; margin-top: 3rem; text-align: center; font-weight: 600; border: 1px solid #e5e5e5; }
+    </style>
+</head>
+<body>
+    <h1>{{ headline }}</h1>
+    
+    {% if hero_image %}
+    <img src="{{ hero_image }}" class="visual" alt="Article Visual">
+    {% endif %}
+
+    <div class="intro">{{ introduction }}</div>
+    
+    {% for point in key_points %}
+    <div class="point">
+        <div class="point-title">{{ point.title }}</div>
+        <p>{{ point.detail }}</p>
+    </div>
+    {% endfor %}
+    
+    <div class="point">
+        <h2>Conclusion</h2>
+        <p>{{ conclusion }}</p>
+    </div>
+    
+    <div class="cta">
+        {{ call_to_action }}
+    </div>
+</body>
+</html>''')
+
+    def generate_linkedin_html(self, article_data: dict, hero_image: Optional[GeneratedImage] = None) -> str:
+        hero_src = None
+        if hero_image:
+            b64 = base64.b64encode(hero_image.image_data).decode('utf-8')
+            hero_src = f"data:image/webp;base64,{b64}"
+            
+        template = self._get_linkedin_template()
+        return template.render(
+            headline=article_data.get('headline', 'LinkedIn Article'),
+            introduction=article_data.get('introduction', ''),
+            key_points=article_data.get('key_points', []),
+            conclusion=article_data.get('conclusion', ''),
+            call_to_action=article_data.get('call_to_action', ''),
+            hero_image=hero_src
+        )
     
     def _get_template(self) -> Template:
         """Return the Jinja2 HTML template"""
