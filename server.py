@@ -624,7 +624,7 @@ async def root():
             loadingSection.style.display = 'block';
             
             try {
-                let endpoint = '/generate/url';
+                let endpoint = '/api/summarize/url';
                 let body = {};
                 
                 if (type === 'url') {
@@ -641,7 +641,7 @@ async def root():
                     const text = document.getElementById('textContent').value;
                     if (!text) throw new Error("Please enter text content");
                     
-                    endpoint = '/generate/text';
+                    endpoint = '/api/summarize/text';
                     body = {
                         text: text,
                         title: document.getElementById('textTitle').value || "Document Summary",
@@ -679,7 +679,7 @@ async def root():
 
             const interval = setInterval(async () => {
                 try {
-                    const res = await fetch(`/status/${reportId}`);
+                    const res = await fetch(`/api/status/${reportId}`);
                     if (!res.ok) throw new Error("Status check failed");
                     
                     const data = await res.json();
@@ -729,7 +729,7 @@ async def root():
             resultSection.style.display = 'flex';
             
             viewBtn.href = url;
-            downloadBtn.href = url;
+            downloadBtn.href = url + '/download';
         }
 
         function showError(msg) {
