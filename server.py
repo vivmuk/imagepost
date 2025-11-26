@@ -17,13 +17,6 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, HttpUrl
 
-from config import config
-from scraper import ContentScraper
-from summarizer import VeniceSummarizer
-from image_generator import VeniceImageGenerator
-from report_generator import ReportGenerator
-
-
 app = FastAPI(
     title="Venice Summary Report API",
     description="Generate AI-powered summary reports with images using Venice API",
@@ -38,6 +31,19 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Startup event handler - verify critical imports"""
+    try:
+        # Test that critical modules can be imported
+        from config import config
+        print(f"✓ Config loaded successfully")
+        print(f"✓ API Key configured: {'Yes' if config.venice.api_key else 'No'}")
+    except Exception as e:
+        print(f"⚠ Warning during startup: {e}")
+        # Don't fail startup if config has issues
 
 
 class URLInput(BaseModel):
@@ -65,6 +71,12 @@ class ReportStatus(BaseModel):
 
 # Store for background tasks
 report_store = {}
+
+
+@app.get("/favicon.ico")
+async def favicon():
+    """Favicon endpoint to prevent 404 errors"""
+    return JSONResponse(content={}, status_code=204)
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -300,6 +312,12 @@ async def generate_report_task(
     title: str = None
 ):
     """Background task to generate the report"""
+    # Lazy imports to avoid blocking app startup
+    from scraper import ContentScraper
+    from summarizer import VeniceSummarizer
+    from image_generator import VeniceImageGenerator
+    from report_generator import ReportGenerator
+    
     try:
         scraper = ContentScraper()
         summarizer = VeniceSummarizer()
@@ -350,8 +368,14 @@ async def generate_report_task(
 # Health check endpoint
 @app.get("/health")
 async def health_check():
-    """Health check endpoint"""
+    """Health check endpoint - no imports required"""
     return {"status": "healthy", "api": "Venice Summary Report Generator"}
+
+
+@app.get("/test")
+async def test():
+    """Simple test endpoint to verify server is running"""
+    return {"message": "Server is running!", "status": "ok"}
 
 
 if __name__ == "__main__":
