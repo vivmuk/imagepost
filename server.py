@@ -81,70 +81,473 @@ async def favicon():
 
 @app.get("/", response_class=HTMLResponse)
 async def root():
-    """Landing page with API documentation link"""
+    """Interactive landing page with input forms"""
     return """
     <!DOCTYPE html>
-    <html>
+    <html lang="en">
     <head>
-        <title>Venice Summary Report API</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Venice Summary Report Generator</title>
         <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
             body {
                 font-family: system-ui, -apple-system, sans-serif;
-                max-width: 800px;
-                margin: 50px auto;
-                padding: 20px;
                 background: #0a0a0f;
                 color: #e2e8f0;
+                min-height: 100vh;
+                padding: 2rem;
             }
-            h1 { 
+            .container {
+                max-width: 900px;
+                margin: 0 auto;
+            }
+            header {
+                text-align: center;
+                margin-bottom: 3rem;
+            }
+            h1 {
+                font-size: 2.5rem;
                 background: linear-gradient(135deg, #6366f1, #d946ef);
                 -webkit-background-clip: text;
                 -webkit-text-fill-color: transparent;
+                background-clip: text;
+                margin-bottom: 0.5rem;
             }
-            a { color: #6366f1; }
-            code { 
-                background: #1a1a25;
-                padding: 2px 8px;
-                border-radius: 4px;
+            .subtitle {
+                color: #94a3b8;
+                font-size: 1.1rem;
             }
-            .endpoint {
+            .tabs {
+                display: flex;
+                gap: 1rem;
+                margin-bottom: 2rem;
+                border-bottom: 2px solid #2d2d3a;
+            }
+            .tab {
+                padding: 1rem 2rem;
+                background: none;
+                border: none;
+                color: #94a3b8;
+                cursor: pointer;
+                font-size: 1rem;
+                border-bottom: 3px solid transparent;
+                transition: all 0.3s;
+            }
+            .tab:hover {
+                color: #e2e8f0;
+            }
+            .tab.active {
+                color: #6366f1;
+                border-bottom-color: #6366f1;
+            }
+            .tab-content {
+                display: none;
+            }
+            .tab-content.active {
+                display: block;
+            }
+            .form-card {
                 background: #12121a;
                 border: 1px solid #2d2d3a;
+                border-radius: 16px;
+                padding: 2rem;
+                margin-bottom: 2rem;
+            }
+            .form-group {
+                margin-bottom: 1.5rem;
+            }
+            label {
+                display: block;
+                margin-bottom: 0.5rem;
+                color: #e2e8f0;
+                font-weight: 500;
+            }
+            input[type="text"],
+            input[type="url"],
+            textarea {
+                width: 100%;
+                padding: 0.75rem;
+                background: #1a1a25;
+                border: 1px solid #2d2d3a;
                 border-radius: 8px;
-                padding: 16px;
-                margin: 16px 0;
+                color: #e2e8f0;
+                font-size: 1rem;
+                font-family: inherit;
+            }
+            input[type="text"]:focus,
+            input[type="url"]:focus,
+            textarea:focus {
+                outline: none;
+                border-color: #6366f1;
+            }
+            textarea {
+                min-height: 200px;
+                resize: vertical;
+            }
+            input[type="file"] {
+                width: 100%;
+                padding: 0.75rem;
+                background: #1a1a25;
+                border: 1px solid #2d2d3a;
+                border-radius: 8px;
+                color: #e2e8f0;
+                cursor: pointer;
+            }
+            .checkbox-group {
+                display: flex;
+                gap: 1rem;
+                margin-top: 1rem;
+            }
+            .checkbox-group label {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                cursor: pointer;
+            }
+            input[type="checkbox"] {
+                width: 18px;
+                height: 18px;
+                cursor: pointer;
+            }
+            .btn {
+                background: linear-gradient(135deg, #6366f1, #8b5cf6);
+                color: white;
+                border: none;
+                padding: 1rem 2rem;
+                border-radius: 8px;
+                font-size: 1rem;
+                font-weight: 600;
+                cursor: pointer;
+                width: 100%;
+                transition: transform 0.2s, box-shadow 0.2s;
+            }
+            .btn:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 10px 25px rgba(99, 102, 241, 0.3);
+            }
+            .btn:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+                transform: none;
+            }
+            .status {
+                margin-top: 1.5rem;
+                padding: 1rem;
+                border-radius: 8px;
+                display: none;
+            }
+            .status.info {
+                background: #1e3a5f;
+                border: 1px solid #3b82f6;
+                color: #93c5fd;
+            }
+            .status.success {
+                background: #064e3b;
+                border: 1px solid #10b981;
+                color: #6ee7b7;
+            }
+            .status.error {
+                background: #7f1d1d;
+                border: 1px solid #ef4444;
+                color: #fca5a5;
+            }
+            .status.show {
+                display: block;
+            }
+            .spinner {
+                display: inline-block;
+                width: 16px;
+                height: 16px;
+                border: 2px solid #6366f1;
+                border-top-color: transparent;
+                border-radius: 50%;
+                animation: spin 0.6s linear infinite;
+                margin-right: 0.5rem;
+            }
+            @keyframes spin {
+                to { transform: rotate(360deg); }
+            }
+            .link {
+                color: #6366f1;
+                text-decoration: none;
+            }
+            .link:hover {
+                text-decoration: underline;
+            }
+            footer {
+                text-align: center;
+                margin-top: 3rem;
+                padding-top: 2rem;
+                border-top: 1px solid #2d2d3a;
+                color: #94a3b8;
             }
         </style>
     </head>
     <body>
-        <h1>🎨 Venice Summary Report API</h1>
-        <p>Generate AI-powered summary reports with images using Venice API.</p>
-        
-        <h2>Endpoints</h2>
-        
-        <div class="endpoint">
-            <h3>POST /api/summarize/url</h3>
-            <p>Summarize content from a URL</p>
-            <code>{"url": "https://example.com/article"}</code>
+        <div class="container">
+            <header>
+                <h1>🎨 Venice Summary Report Generator</h1>
+                <p class="subtitle">Generate AI-powered summary reports with images</p>
+            </header>
+
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('url')">🌐 From URL</button>
+                <button class="tab" onclick="switchTab('text')">📝 From Text</button>
+                <button class="tab" onclick="switchTab('file')">📄 From File</button>
+            </div>
+
+            <!-- URL Tab -->
+            <div id="url-tab" class="tab-content active">
+                <div class="form-card">
+                    <form id="url-form" onsubmit="submitUrl(event)">
+                        <div class="form-group">
+                            <label for="url-input">Article URL</label>
+                            <input type="url" id="url-input" placeholder="https://example.com/article" required>
+                        </div>
+                        <div class="checkbox-group">
+                            <label>
+                                <input type="checkbox" id="url-images" checked>
+                                Generate images
+                            </label>
+                            <label>
+                                <input type="checkbox" id="url-hero" checked>
+                                Generate hero banner
+                            </label>
+                        </div>
+                        <button type="submit" class="btn" id="url-btn">Generate Report</button>
+                        <div id="url-status" class="status"></div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Text Tab -->
+            <div id="text-tab" class="tab-content">
+                <div class="form-card">
+                    <form id="text-form" onsubmit="submitText(event)">
+                        <div class="form-group">
+                            <label for="text-title">Title (Optional)</label>
+                            <input type="text" id="text-title" placeholder="My Article Title">
+                        </div>
+                        <div class="form-group">
+                            <label for="text-content">Content</label>
+                            <textarea id="text-content" placeholder="Paste or type your content here..." required></textarea>
+                        </div>
+                        <div class="checkbox-group">
+                            <label>
+                                <input type="checkbox" id="text-images" checked>
+                                Generate images
+                            </label>
+                            <label>
+                                <input type="checkbox" id="text-hero" checked>
+                                Generate hero banner
+                            </label>
+                        </div>
+                        <button type="submit" class="btn" id="text-btn">Generate Report</button>
+                        <div id="text-status" class="status"></div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- File Tab -->
+            <div id="file-tab" class="tab-content">
+                <div class="form-card">
+                    <form id="file-form" onsubmit="submitFile(event)">
+                        <div class="form-group">
+                            <label for="file-input">Upload File</label>
+                            <input type="file" id="file-input" accept=".pdf,.docx,.txt,.md,.epub" required>
+                            <small style="color: #94a3b8; margin-top: 0.5rem; display: block;">
+                                Supported formats: PDF, DOCX, TXT, MD, EPUB
+                            </small>
+                        </div>
+                        <div class="checkbox-group">
+                            <label>
+                                <input type="checkbox" id="file-images" checked>
+                                Generate images
+                            </label>
+                            <label>
+                                <input type="checkbox" id="file-hero" checked>
+                                Generate hero banner
+                            </label>
+                        </div>
+                        <button type="submit" class="btn" id="file-btn">Generate Report</button>
+                        <div id="file-status" class="status"></div>
+                    </form>
+                </div>
+            </div>
+
+            <footer>
+                <p><a href="/docs" class="link">📚 API Documentation</a> | <a href="/health" class="link">Health Check</a></p>
+            </footer>
         </div>
-        
-        <div class="endpoint">
-            <h3>POST /api/summarize/text</h3>
-            <p>Summarize raw text content</p>
-            <code>{"text": "Your content here...", "title": "Optional title"}</code>
-        </div>
-        
-        <div class="endpoint">
-            <h3>POST /api/summarize/file</h3>
-            <p>Upload and summarize a file (PDF, DOCX, TXT)</p>
-        </div>
-        
-        <div class="endpoint">
-            <h3>GET /api/report/{report_id}</h3>
-            <p>Get the generated HTML report</p>
-        </div>
-        
-        <p><a href="/docs">📚 Interactive API Documentation</a></p>
+
+        <script>
+            function switchTab(tabName) {
+                // Hide all tabs and content
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                
+                // Show selected tab and content
+                event.target.classList.add('active');
+                document.getElementById(tabName + '-tab').classList.add('active');
+            }
+
+            function showStatus(formId, message, type) {
+                const statusEl = document.getElementById(formId + '-status');
+                statusEl.textContent = message;
+                statusEl.className = 'status ' + type + ' show';
+            }
+
+            function hideStatus(formId) {
+                document.getElementById(formId + '-status').classList.remove('show');
+            }
+
+            async function submitUrl(event) {
+                event.preventDefault();
+                const btn = document.getElementById('url-btn');
+                const url = document.getElementById('url-input').value;
+                const images = document.getElementById('url-images').checked;
+                const hero = document.getElementById('url-hero').checked;
+
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner"></span>Generating...';
+                hideStatus('url');
+
+                try {
+                    const response = await fetch('/api/summarize/url', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ url, generate_images: images, generate_hero: hero })
+                    });
+
+                    const data = await response.json();
+                    
+                    if (response.ok) {
+                        showStatus('url', 'Report generation started! Report ID: ' + data.report_id + '. Checking status...', 'info');
+                        pollStatus(data.report_id, 'url');
+                    } else {
+                        showStatus('url', 'Error: ' + (data.detail || 'Unknown error'), 'error');
+                    }
+                } catch (error) {
+                    showStatus('url', 'Error: ' + error.message, 'error');
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = 'Generate Report';
+                }
+            }
+
+            async function submitText(event) {
+                event.preventDefault();
+                const btn = document.getElementById('text-btn');
+                const text = document.getElementById('text-content').value;
+                const title = document.getElementById('text-title').value || 'Document Summary';
+                const images = document.getElementById('text-images').checked;
+                const hero = document.getElementById('text-hero').checked;
+
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner"></span>Generating...';
+                hideStatus('text');
+
+                try {
+                    const response = await fetch('/api/summarize/text', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text, title, generate_images: images, generate_hero: hero })
+                    });
+
+                    const data = await response.json();
+                    
+                    if (response.ok) {
+                        showStatus('text', 'Report generation started! Report ID: ' + data.report_id + '. Checking status...', 'info');
+                        pollStatus(data.report_id, 'text');
+                    } else {
+                        showStatus('text', 'Error: ' + (data.detail || 'Unknown error'), 'error');
+                    }
+                } catch (error) {
+                    showStatus('text', 'Error: ' + error.message, 'error');
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = 'Generate Report';
+                }
+            }
+
+            async function submitFile(event) {
+                event.preventDefault();
+                const btn = document.getElementById('file-btn');
+                const fileInput = document.getElementById('file-input');
+                const file = fileInput.files[0];
+                const images = document.getElementById('file-images').checked;
+                const hero = document.getElementById('file-hero').checked;
+
+                if (!file) {
+                    showStatus('file', 'Please select a file', 'error');
+                    return;
+                }
+
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner"></span>Generating...';
+                hideStatus('file');
+
+                try {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    formData.append('generate_images', images);
+                    formData.append('generate_hero', hero);
+
+                    const response = await fetch('/api/summarize/file', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const data = await response.json();
+                    
+                    if (response.ok) {
+                        showStatus('file', 'Report generation started! Report ID: ' + data.report_id + '. Checking status...', 'info');
+                        pollStatus(data.report_id, 'file');
+                    } else {
+                        showStatus('file', 'Error: ' + (data.detail || 'Unknown error'), 'error');
+                    }
+                } catch (error) {
+                    showStatus('file', 'Error: ' + error.message, 'error');
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = 'Generate Report';
+                }
+            }
+
+            async function pollStatus(reportId, formId) {
+                const maxAttempts = 60; // 5 minutes max
+                let attempts = 0;
+
+                const checkStatus = async () => {
+                    try {
+                        const response = await fetch('/api/status/' + reportId);
+                        const data = await response.json();
+
+                        if (data.status === 'completed') {
+                            showStatus(formId, 'Report ready! <a href="/api/report/' + reportId + '" class="link" target="_blank">View Report</a>', 'success');
+                        } else if (data.status === 'error') {
+                            showStatus(formId, 'Error: ' + data.message, 'error');
+                        } else {
+                            attempts++;
+                            if (attempts < maxAttempts) {
+                                setTimeout(checkStatus, 5000); // Check every 5 seconds
+                            } else {
+                                showStatus(formId, 'Timeout: Report is still processing. Check back later with report ID: ' + reportId, 'info');
+                            }
+                        }
+                    } catch (error) {
+                        showStatus(formId, 'Error checking status: ' + error.message, 'error');
+                    }
+                };
+
+                checkStatus();
+            }
+        </script>
     </body>
     </html>
     """
