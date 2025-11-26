@@ -67,6 +67,7 @@ class ReportGenerator:
             sections=summary.sections,
             detailed_analysis=summary.detailed_analysis,
             limitations_and_biases=summary.limitations_and_biases,
+            linkedin_post=summary.linkedin_post,
             source=summary.source,
             word_count=summary.word_count,
             image_map=image_map,
@@ -388,6 +389,70 @@ class ReportGenerator:
             font-size: 13px;
         }
         
+        /* Social Media Card */
+        .social-media-card {
+            background: #f3f4f6;
+            border-radius: 8px;
+            padding: 24px;
+            border: 1px solid #e5e5e5;
+        }
+        
+        .social-platform {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+            font-weight: 600;
+            color: #0077b5;
+        }
+        
+        .social-content textarea {
+            width: 100%;
+            height: 200px;
+            padding: 16px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: 14px;
+            resize: vertical;
+            margin-bottom: 12px;
+            background: white;
+        }
+        
+        .social-content button {
+            background: #0077b5;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+        
+        .social-content button:hover {
+            background: #006097;
+        }
+        
+        .social-image {
+            margin-top: 20px;
+        }
+        
+        .social-image p {
+            font-size: 13px;
+            color: #6b7280;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        
+        .social-image img {
+            max-width: 100%;
+            max-height: 400px;
+            border-radius: 4px;
+            border: 1px solid #e5e5e5;
+        }
+        
         /* Footer */
         footer {
             margin-top: 80px;
@@ -520,6 +585,31 @@ class ReportGenerator:
                 <div class="limitations-content">
                     {{ limitations_and_biases | safe }}
                 </div>
+            </div>
+        </section>
+        {% endif %}
+        
+        <!-- Social Media Assets -->
+        {% if linkedin_post %}
+        <section class="section">
+            <h2 class="section-title">Social Media Assets</h2>
+            <div class="social-media-card">
+                <div class="social-platform">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="#0077b5" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
+                    </svg>
+                    <span>LinkedIn Post</span>
+                </div>
+                <div class="social-content">
+                    <textarea readonly onclick="this.select()">{{ linkedin_post }}</textarea>
+                    <button onclick="navigator.clipboard.writeText(this.previousElementSibling.value); this.innerText = 'Copied!'; setTimeout(() => this.innerText = 'Copy Text', 2000);">Copy Text</button>
+                </div>
+                {% if hero_image %}
+                <div class="social-image">
+                    <p>Recommended Visual:</p>
+                    <img src="{{ hero_image }}" alt="Social Media Visual">
+                </div>
+                {% endif %}
             </div>
         </section>
         {% endif %}

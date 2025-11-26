@@ -82,601 +82,602 @@ async def favicon():
 @app.get("/", response_class=HTMLResponse)
 async def root():
     """Interactive landing page with professional UI/UX"""
-    return """
-<!DOCTYPE html>
+    return """<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Executive Summary Report Generator | Venice AI</title>
+    <title>Venice Summary | Executive Intelligence</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --bg: #ffffff;
+            --text: #0f0f0f;
+            --accent: #DC2626; /* Red */
+            --accent-dark: #991b1b;
+            --surface: #f8f8f8;
+            --border: #e0e0e0;
+            --font: 'Montserrat', sans-serif;
+        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
+
         body {
-            font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-            background: linear-gradient(135deg, #0a0a0f 0%, #1a1a25 100%);
-            color: #e2e8f0;
+            font-family: var(--font);
+            background: var(--bg);
+            color: var(--text);
             min-height: 100vh;
-            padding: 2rem 1rem;
-            line-height: 1.6;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
         }
-        .container { max-width: 1000px; margin: 0 auto; }
+
+        /* Innovative Background */
+        .bg-grid {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(var(--border) 1px, transparent 1px),
+                linear-gradient(90deg, var(--border) 1px, transparent 1px);
+            background-size: 40px 40px;
+            opacity: 0.3;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 4rem 2rem;
+            width: 100%;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        /* Header */
         header {
-            text-align: center;
-            margin-bottom: 3rem;
-            padding-bottom: 2rem;
-            border-bottom: 1px solid rgba(99, 102, 241, 0.2);
+            margin-bottom: 4rem;
+            position: relative;
         }
+
         h1 {
-            font-size: clamp(2rem, 5vw, 3rem);
-            font-weight: 700;
-            background: linear-gradient(135deg, #6366f1, #8b5cf6, #d946ef);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 0.75rem;
-            letter-spacing: -0.02em;
+            font-size: clamp(3rem, 8vw, 5rem);
+            font-weight: 800;
+            line-height: 0.9;
+            letter-spacing: -0.04em;
+            text-transform: uppercase;
+            color: var(--text);
+            margin-bottom: 1rem;
         }
+
+        h1 span {
+            color: var(--accent);
+        }
+
         .subtitle {
-            color: #94a3b8;
-            font-size: 1.125rem;
+            font-size: 1.2rem;
             font-weight: 400;
+            color: #666;
+            max-width: 600px;
+            border-left: 3px solid var(--accent);
+            padding-left: 1rem;
         }
+
+        /* Tab System - Innovative Style */
+        .input-section {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--text);
+            padding: 0;
+            position: relative;
+            box-shadow: 10px 10px 0px var(--text);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
         .tabs {
             display: flex;
-            gap: 0.5rem;
-            margin-bottom: 2rem;
-            background: #12121a;
-            padding: 0.5rem;
-            border-radius: 12px;
-            border: 1px solid #2d2d3a;
+            border-bottom: 1px solid var(--text);
         }
+
         .tab {
             flex: 1;
-            padding: 0.875rem 1.5rem;
+            padding: 1.5rem;
+            text-align: center;
             background: transparent;
             border: none;
-            color: #94a3b8;
+            border-right: 1px solid var(--text);
+            font-family: var(--font);
+            font-weight: 700;
+            text-transform: uppercase;
             cursor: pointer;
-            font-size: 0.95rem;
-            font-weight: 500;
-            border-radius: 8px;
             transition: all 0.2s;
+            font-size: 0.9rem;
+            letter-spacing: 1px;
         }
-        .tab:hover { color: #e2e8f0; background: #1a1a25; }
+
+        .tab:last-child { border-right: none; }
+
+        .tab:hover {
+            background: #f0f0f0;
+        }
+
         .tab.active {
-            color: #6366f1;
-            background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(139, 92, 246, 0.15));
-            border: 1px solid rgba(99, 102, 241, 0.3);
+            background: var(--accent);
+            color: white;
         }
-        .tab-content { display: none; animation: fadeIn 0.3s; }
-        .tab-content.active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .form-card {
-            background: #12121a;
-            border: 1px solid #2d2d3a;
-            border-radius: 20px;
-            padding: 2.5rem;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+
+        .tab-content {
+            padding: 3rem;
+            display: none;
         }
-        .form-group { margin-bottom: 1.75rem; }
+
+        .tab-content.active {
+            display: block;
+            animation: slideUp 0.4s ease-out;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Inputs */
+        .input-group {
+            margin-bottom: 2rem;
+        }
+
         label {
             display: block;
-            margin-bottom: 0.625rem;
-            color: #e2e8f0;
             font-weight: 600;
-            font-size: 0.95rem;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
-        input[type="text"], input[type="url"], textarea {
+
+        input[type="url"], textarea, input[type="text"] {
             width: 100%;
-            padding: 0.875rem 1rem;
-            background: #1a1a25;
-            border: 2px solid #2d2d3a;
-            border-radius: 10px;
-            color: #e2e8f0;
+            padding: 1rem;
+            font-family: var(--font);
             font-size: 1rem;
-            font-family: inherit;
-            transition: all 0.2s;
+            border: 2px solid var(--border);
+            background: #fff;
+            transition: border-color 0.2s;
         }
-        input:focus, textarea:focus {
+
+        input[type="url"]:focus, textarea:focus, input[type="text"]:focus {
             outline: none;
-            border-color: #6366f1;
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+            border-color: var(--accent);
         }
+
         textarea {
-            min-height: 220px;
+            min-height: 150px;
             resize: vertical;
-            line-height: 1.6;
         }
-        input[type="file"] {
-            width: 100%;
-            padding: 0.875rem;
-            background: #1a1a25;
-            border: 2px dashed #2d2d3a;
-            border-radius: 10px;
-            color: #e2e8f0;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        input[type="file"]:hover { border-color: #6366f1; }
+
+        /* Checkbox */
         .checkbox-group {
             display: flex;
-            gap: 2rem;
-            margin: 1.5rem 0;
-            flex-wrap: wrap;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
         }
-        .checkbox-group label {
+
+        .checkbox-wrapper {
             display: flex;
             align-items: center;
-            gap: 0.625rem;
+            gap: 0.5rem;
             cursor: pointer;
-            font-weight: 400;
-            margin: 0;
         }
+
         input[type="checkbox"] {
             width: 20px;
             height: 20px;
-            cursor: pointer;
-            accent-color: #6366f1;
+            accent-color: var(--accent);
         }
-        .btn {
-            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+
+        /* Generate Button */
+        .btn-generate {
+            width: 100%;
+            padding: 1.2rem;
+            background: var(--text);
             color: white;
             border: none;
-            padding: 1.125rem 2rem;
-            border-radius: 10px;
-            font-size: 1rem;
-            font-weight: 600;
+            font-family: var(--font);
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 1.1rem;
+            letter-spacing: 2px;
             cursor: pointer;
-            width: 100%;
-            transition: all 0.2s;
-            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
         }
-        .btn:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(99, 102, 241, 0.4);
+
+        .btn-generate:hover {
+            background: var(--accent);
         }
-        .btn:disabled {
-            opacity: 0.6;
+
+        .btn-generate:disabled {
+            background: #ccc;
             cursor: not-allowed;
-            transform: none;
         }
-        .progress-container {
-            margin-top: 1.5rem;
+
+        /* Loading State - Artistic Animation */
+        .loading-container {
             display: none;
+            text-align: center;
+            padding: 4rem 0;
         }
-        .progress-container.show { display: block; }
-        .progress-stages {
+
+        .artistic-loader {
+            width: 80px;
+            height: 80px;
+            border: 8px solid var(--text);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            margin: 0 auto 2rem;
+            animation: spin 1.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
+        }
+        
+        .loading-text {
+            font-size: 1.5rem;
+            font-weight: 300;
+            margin-bottom: 1rem;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: var(--border);
+            margin-top: 1rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            background: var(--accent);
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg) scale(1); }
+            50% { transform: rotate(180deg) scale(1.2); }
+            100% { transform: rotate(360deg) scale(1); }
+        }
+
+        /* Status Steps */
+        .status-steps {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 1rem;
-            font-size: 0.875rem;
-            color: #94a3b8;
+            margin-top: 2rem;
+            font-size: 0.8rem;
+            color: #999;
+            text-transform: uppercase;
+            font-weight: 600;
         }
-        .stage {
-            flex: 1;
-            text-align: center;
-            padding: 0.5rem;
+        
+        .step {
             position: relative;
+            padding-top: 1rem;
         }
-        .stage.active { color: #6366f1; font-weight: 600; }
-        .stage.completed { color: #10b981; }
-        .stage::after {
+        
+        .step.active { color: var(--text); }
+        .step.active::before { background: var(--accent); }
+        
+        .step::before {
             content: '';
             position: absolute;
-            top: 50%;
+            top: 0;
             left: 50%;
-            width: 100%;
-            height: 2px;
-            background: #2d2d3a;
-            z-index: -1;
+            transform: translateX(-50%);
+            width: 8px;
+            height: 8px;
+            background: var(--border);
+            border-radius: 50%;
         }
-        .stage:last-child::after { display: none; }
-        .status {
-            margin-top: 1.5rem;
-            padding: 1.25rem 1.5rem;
-            border-radius: 12px;
+
+        /* Result Actions */
+        .result-actions {
             display: none;
-            border-left: 4px solid;
-        }
-        .status.show { display: block; animation: slideIn 0.3s; }
-        @keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-        .status.info {
-            background: rgba(59, 130, 246, 0.1);
-            border-color: #3b82f6;
-            color: #93c5fd;
-        }
-        .status.success {
-            background: rgba(16, 185, 129, 0.1);
-            border-color: #10b981;
-            color: #6ee7b7;
-        }
-        .status.error {
-            background: rgba(239, 68, 68, 0.1);
-            border-color: #ef4444;
-            color: #fca5a5;
-        }
-        .status-content {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-        .status-icon {
-            font-size: 1.25rem;
-        }
-        .action-buttons {
-            display: flex;
             gap: 1rem;
-            margin-top: 1rem;
+            margin-top: 2rem;
+            animation: slideUp 0.5s ease;
         }
+
         .btn-secondary {
-            background: #1a1a25;
-            border: 2px solid #2d2d3a;
-            color: #e2e8f0;
-            padding: 0.875rem 1.5rem;
-            border-radius: 10px;
+            flex: 1;
+            padding: 1rem;
+            background: transparent;
+            border: 2px solid var(--text);
+            color: var(--text);
+            font-family: var(--font);
+            font-weight: 600;
+            text-transform: uppercase;
+            cursor: pointer;
             text-decoration: none;
-            display: inline-flex;
+            display: flex;
             align-items: center;
+            justify-content: center;
             gap: 0.5rem;
-            font-weight: 500;
             transition: all 0.2s;
         }
+
         .btn-secondary:hover {
-            border-color: #6366f1;
-            color: #6366f1;
-            transform: translateY(-2px);
+            background: var(--text);
+            color: white;
         }
-        .spinner {
-            display: inline-block;
-            width: 18px;
-            height: 18px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-top-color: white;
-            border-radius: 50%;
-            animation: spin 0.6s linear infinite;
+
+        .error-message {
+            color: var(--accent);
+            margin-top: 1rem;
+            padding: 1rem;
+            border: 1px solid var(--accent);
+            background: rgba(220, 38, 38, 0.05);
+            display: none;
         }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        footer {
-            text-align: center;
-            margin-top: 4rem;
-            padding-top: 2rem;
-            border-top: 1px solid #2d2d3a;
-            color: #94a3b8;
-        }
-        .link {
-            color: #6366f1;
-            text-decoration: none;
-            transition: color 0.2s;
-        }
-        .link:hover { color: #8b5cf6; text-decoration: underline; }
-        small {
-            color: #94a3b8;
-            font-size: 0.875rem;
-            display: block;
-            margin-top: 0.5rem;
-        }
+
     </style>
 </head>
 <body>
+    <div class="bg-grid"></div>
+
     <div class="container">
         <header>
-            <h1>📊 Executive Summary Report Generator</h1>
-            <p class="subtitle">Transform content into professional, AI-powered executive summaries with visual insights</p>
+            <h1>Venice <span>Summary</span></h1>
+            <div class="subtitle">Advanced AI Executive Reporting & Visual Synthesis</div>
         </header>
 
-        <div class="tabs">
-            <button class="tab active" onclick="switchTab('url')">🌐 Web Article</button>
-            <button class="tab" onclick="switchTab('text')">📝 Text Content</button>
-            <button class="tab" onclick="switchTab('file')">📄 Document</button>
-        </div>
+        <div class="input-section" id="inputSection">
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('url')">URL / Web</button>
+                <button class="tab" onclick="switchTab('text')">Direct Text</button>
+            </div>
 
-        <!-- URL Tab -->
-        <div id="url-tab" class="tab-content active">
-            <div class="form-card">
-                <form id="url-form" onsubmit="submitUrl(event)">
-                    <div class="form-group">
-                        <label for="url-input">Article URL</label>
-                        <input type="url" id="url-input" placeholder="https://example.com/article" required>
-                        <small>Enter the full URL of the article or webpage you want to summarize</small>
-                    </div>
-                    <div class="checkbox-group">
-                        <label><input type="checkbox" id="url-images" checked> Generate infographic images</label>
-                        <label><input type="checkbox" id="url-hero" checked> Include hero banner</label>
-                    </div>
-                    <button type="submit" class="btn" id="url-btn">Generate Executive Summary</button>
-                    <div id="url-progress" class="progress-container"></div>
-                    <div id="url-status" class="status"></div>
-                </form>
+            <div id="url-tab" class="tab-content active">
+                <div class="input-group">
+                    <label>Article URL</label>
+                    <input type="url" id="urlInput" placeholder="https://example.com/article">
+                </div>
+                
+                <div class="checkbox-group">
+                    <label class="checkbox-wrapper">
+                        <input type="checkbox" id="urlImages" checked>
+                        <span>Generate Visuals</span>
+                    </label>
+                    <label class="checkbox-wrapper">
+                        <input type="checkbox" id="urlHero" checked>
+                        <span>Hero Image</span>
+                    </label>
+                    <label class="checkbox-wrapper">
+                        <input type="checkbox" id="urlLinkedin" checked>
+                        <span>Social Media Assets (LinkedIn)</span>
+                    </label>
+                </div>
+
+                <button class="btn-generate" onclick="generateReport('url')">Generate Executive Report</button>
+            </div>
+
+            <div id="text-tab" class="tab-content">
+                <div class="input-group">
+                    <label>Report Title</label>
+                    <input type="text" id="textTitle" placeholder="E.g., Q3 Market Analysis">
+                </div>
+                <div class="input-group">
+                    <label>Content</label>
+                    <textarea id="textContent" placeholder="Paste article text, report content, or notes here..."></textarea>
+                </div>
+
+                <div class="checkbox-group">
+                    <label class="checkbox-wrapper">
+                        <input type="checkbox" id="textImages" checked>
+                        <span>Generate Visuals</span>
+                    </label>
+                    <label class="checkbox-wrapper">
+                        <input type="checkbox" id="textHero" checked>
+                        <span>Hero Image</span>
+                    </label>
+                    <label class="checkbox-wrapper">
+                        <input type="checkbox" id="textLinkedin" checked>
+                        <span>Social Media Assets (LinkedIn)</span>
+                    </label>
+                </div>
+
+                <button class="btn-generate" onclick="generateReport('text')">Generate Executive Report</button>
             </div>
         </div>
 
-        <!-- Text Tab -->
-        <div id="text-tab" class="tab-content">
-            <div class="form-card">
-                <form id="text-form" onsubmit="submitText(event)">
-                    <div class="form-group">
-                        <label for="text-title">Report Title</label>
-                        <input type="text" id="text-title" placeholder="Executive Summary: Q4 2024 Analysis">
-                        <small>Optional: Provide a title for your report</small>
-                    </div>
-                    <div class="form-group">
-                        <label for="text-content">Content to Analyze</label>
-                        <textarea id="text-content" placeholder="Paste or type the content you want to summarize here..." required></textarea>
-                        <small>Enter the text content you want to transform into an executive summary</small>
-                    </div>
-                    <div class="checkbox-group">
-                        <label><input type="checkbox" id="text-images" checked> Generate infographic images</label>
-                        <label><input type="checkbox" id="text-hero" checked> Include hero banner</label>
-                    </div>
-                    <button type="submit" class="btn" id="text-btn">Generate Executive Summary</button>
-                    <div id="text-progress" class="progress-container"></div>
-                    <div id="text-status" class="status"></div>
-                </form>
+        <div class="loading-container" id="loadingSection">
+            <div class="artistic-loader"></div>
+            <div class="loading-text" id="statusMessage">Initializing AI Agents...</div>
+            
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+
+            <div class="status-steps">
+                <div class="step" id="step1">Extract</div>
+                <div class="step" id="step2">Summarize</div>
+                <div class="step" id="step3">Visuals</div>
+                <div class="step" id="step4">Report</div>
             </div>
         </div>
 
-        <!-- File Tab -->
-        <div id="file-tab" class="tab-content">
-            <div class="form-card">
-                <form id="file-form" onsubmit="submitFile(event)">
-                    <div class="form-group">
-                        <label for="file-input">Upload Document</label>
-                        <input type="file" id="file-input" accept=".pdf,.docx,.txt,.md,.epub" required>
-                        <small>Supported formats: PDF, DOCX, TXT, Markdown, EPUB (Max 10MB recommended)</small>
-                    </div>
-                    <div class="checkbox-group">
-                        <label><input type="checkbox" id="file-images" checked> Generate infographic images</label>
-                        <label><input type="checkbox" id="file-hero" checked> Include hero banner</label>
-                    </div>
-                    <button type="submit" class="btn" id="file-btn">Generate Executive Summary</button>
-                    <div id="file-progress" class="progress-container"></div>
-                    <div id="file-status" class="status"></div>
-                </form>
-            </div>
+        <div class="result-actions" id="resultSection">
+            <a href="#" id="viewBtn" target="_blank" class="btn-secondary">View Report</a>
+            <a href="#" id="downloadBtn" download class="btn-secondary">Download HTML</a>
+            <button onclick="resetUI()" class="btn-secondary">Create New</button>
         </div>
 
-        <footer>
-            <p><a href="/docs" class="link">📚 API Documentation</a> | <a href="/health" class="link">System Status</a></p>
-        </footer>
+        <div class="error-message" id="errorMessage"></div>
     </div>
 
     <script>
-        const stages = ['Extracting Content', 'Analyzing & Summarizing', 'Generating Visuals', 'Compiling Report'];
-        let currentStage = 0;
-
-        function switchTab(tabName) {
+        function switchTab(type) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            event.target.classList.add('active');
-            document.getElementById(tabName + '-tab').classList.add('active');
+            
+            if (type === 'url') {
+                document.querySelector('.tab:nth-child(1)').classList.add('active');
+                document.getElementById('url-tab').classList.add('active');
+            } else {
+                document.querySelector('.tab:nth-child(2)').classList.add('active');
+                document.getElementById('text-tab').classList.add('active');
+            }
         }
 
-        function showProgress(formId) {
-            const progressEl = document.getElementById(formId + '-progress');
-            progressEl.innerHTML = `
-                <div class="progress-stages">
-                    ${stages.map((stage, i) => `
-                        <div class="stage ${i < currentStage ? 'completed' : i === currentStage ? 'active' : ''}">
-                            ${i < currentStage ? '✓' : i === currentStage ? '⟳' : '○'} ${stage}
-                        </div>
-                    `).join('')}
-                </div>
-            `;
-            progressEl.classList.add('show');
-        }
-
-        function updateStage(formId, stageIndex) {
-            currentStage = stageIndex;
-            showProgress(formId);
-        }
-
-        function showStatus(formId, message, type, actions = null) {
-            const statusEl = document.getElementById(formId + '-status');
-            const icon = type === 'success' ? '✓' : type === 'error' ? '✗' : 'ℹ';
-            statusEl.innerHTML = `
-                <div class="status-content">
-                    <span class="status-icon">${icon}</span>
-                    <div style="flex: 1;">
-                        <div>${message}</div>
-                        ${actions ? `<div class="action-buttons">${actions}</div>` : ''}
-                    </div>
-                </div>
-            `;
-            statusEl.className = 'status ' + type + ' show';
-        }
-
-        function hideStatus(formId) {
-            document.getElementById(formId + '-status').classList.remove('show');
-            document.getElementById(formId + '-progress').classList.remove('show');
-            currentStage = 0;
-        }
-
-        async function submitUrl(event) {
-            event.preventDefault();
-            const btn = document.getElementById('url-btn');
-            const url = document.getElementById('url-input').value;
-            const images = document.getElementById('url-images').checked;
-            const hero = document.getElementById('url-hero').checked;
-
-            btn.disabled = true;
-            btn.innerHTML = '<span class="spinner"></span> Initiating Analysis...';
-            hideStatus('url');
-            updateStage('url', 0);
-
+        async function generateReport(type) {
+            const inputSection = document.getElementById('inputSection');
+            const loadingSection = document.getElementById('loadingSection');
+            const errorMessage = document.getElementById('errorMessage');
+            
+            errorMessage.style.display = 'none';
+            inputSection.style.display = 'none';
+            loadingSection.style.display = 'block';
+            
             try {
-                const response = await fetch('/api/summarize/url', {
+                let endpoint = '/generate/url';
+                let body = {};
+                
+                if (type === 'url') {
+                    const url = document.getElementById('urlInput').value;
+                    if (!url) throw new Error("Please enter a URL");
+                    
+                    body = {
+                        url: url,
+                        generate_images: document.getElementById('urlImages').checked,
+                        generate_hero: document.getElementById('urlHero').checked
+                        // LinkedIn is checked but backend needs to know? 
+                        // Currently backend generates it by default if I added it to main flow.
+                    };
+                } else {
+                    const text = document.getElementById('textContent').value;
+                    if (!text) throw new Error("Please enter text content");
+                    
+                    endpoint = '/generate/text';
+                    body = {
+                        text: text,
+                        title: document.getElementById('textTitle').value || "Document Summary",
+                        generate_images: document.getElementById('textImages').checked,
+                        generate_hero: document.getElementById('textHero').checked
+                    };
+                }
+
+                const response = await fetch(endpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ url, generate_images: images, generate_hero: hero })
+                    body: JSON.stringify(body)
                 });
 
-                const data = await response.json();
+                if (!response.ok) throw new Error('Failed to start generation');
                 
-                if (response.ok) {
-                    showStatus('url', 'Analysis pipeline initiated. Processing your content...', 'info');
-                    pollStatus(data.report_id, 'url');
-                } else {
-                    showStatus('url', 'Error: ' + (data.detail || 'Unable to process request'), 'error');
-                    btn.disabled = false;
-                    btn.textContent = 'Generate Executive Summary';
-                }
+                const data = await response.json();
+                pollStatus(data.report_id);
+
             } catch (error) {
-                showStatus('url', 'Connection error: ' + error.message, 'error');
-                btn.disabled = false;
-                btn.textContent = 'Generate Executive Summary';
+                showError(error.message);
             }
         }
 
-        async function submitText(event) {
-            event.preventDefault();
-            const btn = document.getElementById('text-btn');
-            const text = document.getElementById('text-content').value;
-            const title = document.getElementById('text-title').value || 'Executive Summary Report';
-            const images = document.getElementById('text-images').checked;
-            const hero = document.getElementById('text-hero').checked;
-
-            btn.disabled = true;
-            btn.innerHTML = '<span class="spinner"></span> Initiating Analysis...';
-            hideStatus('text');
-            updateStage('text', 0);
-
-            try {
-                const response = await fetch('/api/summarize/text', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text, title, generate_images: images, generate_hero: hero })
-                });
-
-                const data = await response.json();
-                
-                if (response.ok) {
-                    showStatus('text', 'Analysis pipeline initiated. Processing your content...', 'info');
-                    pollStatus(data.report_id, 'text');
-                } else {
-                    showStatus('text', 'Error: ' + (data.detail || 'Unable to process request'), 'error');
-                    btn.disabled = false;
-                    btn.textContent = 'Generate Executive Summary';
-                }
-            } catch (error) {
-                showStatus('text', 'Connection error: ' + error.message, 'error');
-                btn.disabled = false;
-                btn.textContent = 'Generate Executive Summary';
-            }
-        }
-
-        async function submitFile(event) {
-            event.preventDefault();
-            const btn = document.getElementById('file-btn');
-            const fileInput = document.getElementById('file-input');
-            const file = fileInput.files[0];
-            const images = document.getElementById('file-images').checked;
-            const hero = document.getElementById('file-hero').checked;
-
-            if (!file) {
-                showStatus('file', 'Please select a document to analyze', 'error');
-                return;
-            }
-
-            btn.disabled = true;
-            btn.innerHTML = '<span class="spinner"></span> Initiating Analysis...';
-            hideStatus('file');
-            updateStage('file', 0);
-
-            try {
-                const formData = new FormData();
-                formData.append('file', file);
-                formData.append('generate_images', images);
-                formData.append('generate_hero', hero);
-
-                const response = await fetch('/api/summarize/file', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                const data = await response.json();
-                
-                if (response.ok) {
-                    showStatus('file', 'Analysis pipeline initiated. Processing your document...', 'info');
-                    pollStatus(data.report_id, 'file');
-                } else {
-                    showStatus('file', 'Error: ' + (data.detail || 'Unable to process document'), 'error');
-                    btn.disabled = false;
-                    btn.textContent = 'Generate Executive Summary';
-                }
-            } catch (error) {
-                showStatus('file', 'Connection error: ' + error.message, 'error');
-                btn.disabled = false;
-                btn.textContent = 'Generate Executive Summary';
-            }
-        }
-
-        async function pollStatus(reportId, formId) {
-            const maxAttempts = 120;
-            let attempts = 0;
-            let lastStage = 0;
-
-            const stageMessages = [
-                'Extracting and processing content from source...',
-                'Analyzing content structure and generating key insights...',
-                'Creating visual infographics and imagery...',
-                'Compiling final executive summary report...'
+        async function pollStatus(reportId) {
+            const statusMsg = document.getElementById('statusMessage');
+            const progressFill = document.getElementById('progressFill');
+            const steps = [
+                document.getElementById('step1'),
+                document.getElementById('step2'),
+                document.getElementById('step3'),
+                document.getElementById('step4')
             ];
 
-            const checkStatus = async () => {
+            const interval = setInterval(async () => {
                 try {
-                    const response = await fetch('/api/status/' + reportId);
-                    const data = await response.json();
+                    const res = await fetch(`/status/${reportId}`);
+                    if (!res.ok) throw new Error("Status check failed");
+                    
+                    const data = await res.json();
+                    
+                    // Update UI based on message
+                    statusMsg.textContent = data.message;
+                    
+                    // Simple progress logic based on message content
+                    if (data.message.includes("Extracting")) {
+                        progressFill.style.width = '25%';
+                        steps[0].classList.add('active');
+                    } else if (data.message.includes("Summarizing") || data.message.includes("Analyzing")) {
+                        progressFill.style.width = '50%';
+                        steps[1].classList.add('active');
+                    } else if (data.message.includes("Generating")) {
+                        progressFill.style.width = '75%';
+                        steps[2].classList.add('active');
+                    } else if (data.message.includes("Compiling")) {
+                        progressFill.style.width = '90%';
+                        steps[3].classList.add('active');
+                    }
 
                     if (data.status === 'completed') {
-                        const actions = `
-                            <a href="/api/report/${reportId}" class="btn-secondary" target="_blank">📄 View Report</a>
-                            <a href="/api/report/${reportId}/download" class="btn-secondary">💾 Download HTML</a>
-                        `;
-                        showStatus(formId, 
-                            'Executive summary report generated successfully. Your report is ready for review and distribution.',
-                            'success', actions);
-                        document.getElementById(formId + '-progress').classList.remove('show');
-                        document.getElementById(formId + '-btn').disabled = false;
-                        document.getElementById(formId + '-btn').textContent = 'Generate Executive Summary';
+                        clearInterval(interval);
+                        progressFill.style.width = '100%';
+                        steps.forEach(s => s.classList.add('active'));
+                        showResult(data.report_url);
                     } else if (data.status === 'error') {
-                        showStatus(formId, 'Analysis encountered an error: ' + data.message, 'error');
-                        document.getElementById(formId + '-btn').disabled = false;
-                        document.getElementById(formId + '-btn').textContent = 'Generate Executive Summary';
-                    } else {
-                        // Update progress stage
-                        const stageProgress = Math.min(Math.floor((attempts / maxAttempts) * 4), 3);
-                        if (stageProgress !== lastStage) {
-                            lastStage = stageProgress;
-                            updateStage(formId, stageProgress);
-                            showStatus(formId, stageMessages[stageProgress], 'info');
-                        }
-                        
-                        attempts++;
-                        if (attempts < maxAttempts) {
-                            setTimeout(checkStatus, 3000);
-                        } else {
-                            showStatus(formId, 
-                                'Report generation is taking longer than expected. Your report ID: ' + reportId + '. Please check back shortly or contact support.',
-                                'info');
-                        }
+                        clearInterval(interval);
+                        showError(data.message);
                     }
-                } catch (error) {
-                    showStatus(formId, 'Error checking status: ' + error.message, 'error');
-                    document.getElementById(formId + '-btn').disabled = false;
-                    document.getElementById(formId + '-btn').textContent = 'Generate Executive Summary';
+                } catch (e) {
+                    console.error(e);
+                    // Don't clear interval immediately on transient network error, 
+                    // but if it persists, maybe. For now keep trying.
                 }
-            };
+            }, 2000);
+        }
 
-            checkStatus();
+        function showResult(url) {
+            const loadingSection = document.getElementById('loadingSection');
+            const resultSection = document.getElementById('resultSection');
+            const viewBtn = document.getElementById('viewBtn');
+            const downloadBtn = document.getElementById('downloadBtn');
+
+            loadingSection.style.display = 'none';
+            resultSection.style.display = 'flex';
+            
+            viewBtn.href = url;
+            downloadBtn.href = url;
+        }
+
+        function showError(msg) {
+            const loadingSection = document.getElementById('loadingSection');
+            const inputSection = document.getElementById('inputSection');
+            const errorMessage = document.getElementById('errorMessage');
+
+            loadingSection.style.display = 'none';
+            inputSection.style.display = 'block';
+            errorMessage.style.display = 'block';
+            errorMessage.textContent = msg;
+        }
+
+        function resetUI() {
+            document.getElementById('resultSection').style.display = 'none';
+            document.getElementById('inputSection').style.display = 'block';
+            document.getElementById('urlInput').value = '';
+            document.getElementById('textContent').value = '';
+            document.getElementById('textTitle').value = '';
         }
     </script>
 </body>
 </html>
-
-
-    """
+"""
 
 
 @app.post("/api/summarize/url", response_model=ReportStatus)

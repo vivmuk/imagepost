@@ -43,6 +43,7 @@ class StructuredSummary:
     sections: list[SectionSummary]
     detailed_analysis: str
     limitations_and_biases: str  # Type 2 thinking: critical analysis of limitations and cognitive biases
+    linkedin_post: str  # Viral LinkedIn post text
     source: str
     word_count: int
 
@@ -100,10 +101,19 @@ class VeniceSummarizer:
             
             # Stage 5: Generate limitations and biases analysis
             task5 = progress.add_task("Analyzing limitations and biases...", total=None)
-            limitations_and_biases = await self._analyze_limitations_and_biases(
-                content, executive_summary, detailed_analysis
-            )
+            try:
+                limitations_and_biases = await self._analyze_limitations_and_biases(
+                    content, executive_summary, detailed_analysis
+                )
+            except Exception as e:
+                print(f"Error generating limitations: {e}")
+                limitations_and_biases = ""
             progress.update(task5, completed=True)
+
+            # Stage 6: Generate LinkedIn Post
+            task6 = progress.add_task("Drafting LinkedIn post...", total=None)
+            linkedin_post = await self._generate_linkedin_post(content, executive_summary, key_takeaways)
+            progress.update(task6, completed=True)
         
         return StructuredSummary(
             title=content.title,
@@ -113,6 +123,7 @@ class VeniceSummarizer:
             sections=sections,
             detailed_analysis=detailed_analysis,
             limitations_and_biases=limitations_and_biases,
+            linkedin_post=linkedin_post,
             source=content.source,
             word_count=content.word_count
         )
@@ -499,7 +510,57 @@ Provide a thoughtful, balanced critical analysis that would help decision-makers
             
             return result
         except (json.JSONDecodeError, KeyError):
-            return "Critical analysis: Unable to parse limitations and biases analysis."
+            return "<p>Critical analysis: Unable to parse limitations and biases analysis.</p>"
+
+    async def _generate_linkedin_post(self, content: ExtractedContent, summary: str, takeaways: list[str]) -> str:
+        """Generate a viral-style LinkedIn post based on the content"""
+        
+        schema = {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "linkedin_post",
+                "strict": True,
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "post_text": {"type": "string"}
+                    },
+                    "required": ["post_text"],
+                    "additionalProperties": False
+                }
+            }
+        }
+
+        takeaways_text = "\n".join([f"- {t}" for t in takeaways[:3]])
+        
+        prompt = f"""Write a compelling, viral-style LinkedIn post summarizing this content. 
+        
+CONTENT TITLE: {content.title}
+
+SUMMARY:
+{summary[:500]}
+
+KEY TAKEAWAYS:
+{takeaways_text}
+
+Requirements:
+- Hook: Start with a provocative question or statement to grab attention.
+- Body: Concisely explain the 'Why this matters' and key insights. Use short paragraphs and plenty of white space.
+- Structure: Use bullet points for the key takeaways.
+- Tone: Professional yet engaging, thought-provoking, and suitable for a management consultant or thought leader.
+- Call to Action: End with a question to encourage comments.
+- Hashtags: Include 3-5 relevant hashtags at the bottom.
+- Length: optimized for LinkedIn (around 150-200 words).
+
+The output should be the raw text of the post, ready to copy-paste."""
+
+        response = await self._call_venice_api(prompt, schema)
+        
+        try:
+            data = json.loads(response)
+            return data.get("post_text", "")
+        except (json.JSONDecodeError, KeyError):
+            return response[:1000] if response else "Could not generate post."
     
     def _enhance_image_prompt(self, visual_concept: str, section_title: str) -> str:
         """Enhance the visual concept into a proper image generation prompt"""
