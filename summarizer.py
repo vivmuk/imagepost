@@ -26,11 +26,20 @@ class SectionSummary:
 
 
 @dataclass
+class KeyTerm:
+    """A key term with definition"""
+    term: str
+    definition: str
+    context: str  # How it's used in this content
+
+
+@dataclass
 class StructuredSummary:
     """Complete structured summary of content"""
     title: str
     executive_summary: str
     key_takeaways: list[str]
+    key_terms: list[KeyTerm]  # Key terms and definitions
     sections: list[SectionSummary]
     detailed_analysis: str
     limitations_and_biases: str  # Type 2 thinking: critical analysis of limitations and cognitive biases
@@ -84,17 +93,23 @@ class VeniceSummarizer:
             )
             progress.update(task3, completed=True)
             
-            # Stage 4: Generate limitations and biases analysis
-            task4 = progress.add_task("Analyzing limitations and biases...", total=None)
+            # Stage 4: Extract key terms
+            task4 = progress.add_task("Extracting key terms...", total=None)
+            key_terms = await self._extract_key_terms(content)
+            progress.update(task4, completed=True)
+            
+            # Stage 5: Generate limitations and biases analysis
+            task5 = progress.add_task("Analyzing limitations and biases...", total=None)
             limitations_and_biases = await self._analyze_limitations_and_biases(
                 content, executive_summary, detailed_analysis
             )
-            progress.update(task4, completed=True)
+            progress.update(task5, completed=True)
         
         return StructuredSummary(
             title=content.title,
             executive_summary=executive_summary,
             key_takeaways=key_takeaways,
+            key_terms=key_terms,
             sections=sections,
             detailed_analysis=detailed_analysis,
             limitations_and_biases=limitations_and_biases,
@@ -308,6 +323,72 @@ Generate:
         except (json.JSONDecodeError, KeyError):
             return response[:1000] if response else "Summary unavailable", ""
     
+    async def _extract_key_terms(self, content: ExtractedContent) -> list[KeyTerm]:
+        """Extract key terms, jargon, and technical vocabulary with definitions"""
+        
+        schema = {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "key_terms",
+                "strict": True,
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "terms": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "term": {"type": "string"},
+                                    "definition": {"type": "string"},
+                                    "context": {"type": "string"}
+                                },
+                                "required": ["term", "definition", "context"],
+                                "additionalProperties": False
+                            }
+                        }
+                    },
+                    "required": ["terms"],
+                    "additionalProperties": False
+                }
+            }
+        }
+        
+        prompt = f"""Extract 5-10 key terms, technical vocabulary, acronyms, or important concepts from this content that readers should understand.
+
+CONTENT TITLE: {content.title}
+
+CONTENT:
+{content.text[:config.scraper.max_content_length]}
+
+For each term, provide:
+1. The term itself (exact phrase as used in the content)
+2. A clear, concise definition (1-2 sentences, accessible to a general business audience)
+3. Context: How this term is specifically used or relevant in this content
+
+Focus on:
+- Technical jargon that might be unfamiliar
+- Acronyms and abbreviations
+- Key concepts central to understanding the content
+- Industry-specific terminology
+
+Provide definitions that a management consultant or executive could quickly reference."""
+
+        response = await self._call_venice_api(prompt, schema)
+        
+        try:
+            data = json.loads(response)
+            terms = []
+            for t in data.get("terms", []):
+                terms.append(KeyTerm(
+                    term=t.get("term", ""),
+                    definition=t.get("definition", ""),
+                    context=t.get("context", "")
+                ))
+            return terms
+        except (json.JSONDecodeError, KeyError):
+            return []
+    
     async def _analyze_limitations_and_biases(
         self,
         content: ExtractedContent,
@@ -389,29 +470,32 @@ Provide a thoughtful, balanced critical analysis that would help decision-makers
             missing = data.get("missing_perspectives", [])
             evaluation = data.get("critical_evaluation", "")
             
-            result = "## Critical Analysis: Limitations and Cognitive Biases\n\n"
+            # Build HTML output instead of markdown
+            result = ""
             
             if limitations:
-                result += "### Methodological Limitations\n\n"
+                result += '<h3>Methodological Limitations</h3><ul>'
                 for lim in limitations:
-                    result += f"• {lim}\n"
-                result += "\n"
+                    result += f'<li>{lim}</li>'
+                result += '</ul>'
             
             if biases:
-                result += "### Cognitive Biases Identified\n\n"
+                result += '<h3>Cognitive Biases Identified</h3>'
                 for bias in biases:
-                    result += f"**{bias['bias_name']}**: {bias['description']}\n"
-                    result += f"*Impact*: {bias['impact']}\n\n"
+                    result += f'''<div class="bias-item">
+                        <div class="bias-name">{bias['bias_name']}</div>
+                        <div class="bias-description">{bias['description']}</div>
+                        <div class="bias-impact"><strong>Impact:</strong> {bias['impact']}</div>
+                    </div>'''
             
             if missing:
-                result += "### Missing Perspectives\n\n"
+                result += '<h3>Missing Perspectives</h3><ul>'
                 for persp in missing:
-                    result += f"• {persp}\n"
-                result += "\n"
+                    result += f'<li>{persp}</li>'
+                result += '</ul>'
             
             if evaluation:
-                result += "### Critical Evaluation\n\n"
-                result += evaluation
+                result += f'<h3>Critical Evaluation</h3><p>{evaluation}</p>'
             
             return result
         except (json.JSONDecodeError, KeyError):

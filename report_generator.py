@@ -63,6 +63,7 @@ class ReportGenerator:
             title=summary.title,
             executive_summary=summary.executive_summary,
             key_takeaways=summary.key_takeaways,
+            key_terms=summary.key_terms,
             sections=summary.sections,
             detailed_analysis=summary.detailed_analysis,
             limitations_and_biases=summary.limitations_and_biases,
@@ -92,7 +93,7 @@ class ReportGenerator:
     <title>{{ title }} | Executive Summary</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -101,7 +102,7 @@ class ReportGenerator:
         }
         
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             background: #ffffff;
             color: #1a1a1a;
             line-height: 1.8;
@@ -134,7 +135,7 @@ class ReportGenerator:
         }
         
         h1 {
-            font-family: 'Crimson Text', Georgia, serif;
+            font-family: 'Montserrat', sans-serif;
             font-size: 42px;
             font-weight: 600;
             line-height: 1.2;
@@ -155,7 +156,7 @@ class ReportGenerator:
         }
         
         .section-title {
-            font-family: 'Crimson Text', Georgia, serif;
+            font-family: 'Montserrat', sans-serif;
             font-size: 28px;
             font-weight: 600;
             color: #111827;
@@ -201,6 +202,45 @@ class ReportGenerator:
             font-size: 15px;
             line-height: 1.7;
             color: #374151;
+        }
+        
+        /* Key Terms */
+        .key-terms {
+            display: grid;
+            gap: 16px;
+        }
+        
+        .key-term {
+            padding: 20px;
+            background: #f9fafb;
+            border-left: 3px solid #6366f1;
+            border-radius: 2px;
+        }
+        
+        .term-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 8px;
+        }
+        
+        .term-definition {
+            font-size: 14px;
+            line-height: 1.7;
+            color: #374151;
+            margin-bottom: 8px;
+        }
+        
+        .term-context {
+            font-size: 13px;
+            color: #6b7280;
+            line-height: 1.6;
+        }
+        
+        .term-context em {
+            color: #4b5563;
+            font-style: normal;
+            font-weight: 500;
         }
         
         /* Sections */
@@ -420,6 +460,22 @@ class ReportGenerator:
                 {% endfor %}
             </div>
         </section>
+        
+        <!-- Key Terms -->
+        {% if key_terms %}
+        <section class="section">
+            <h2 class="section-title">Key Terms &amp; Definitions</h2>
+            <div class="key-terms">
+                {% for term in key_terms %}
+                <div class="key-term">
+                    <div class="term-name">{{ term.term }}</div>
+                    <div class="term-definition">{{ term.definition }}</div>
+                    <div class="term-context"><em>Context:</em> {{ term.context }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
         
         <!-- Detailed Sections -->
         <section class="section">
