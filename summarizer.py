@@ -302,11 +302,12 @@ Generate:
     def _enhance_image_prompt(self, visual_concept: str, section_title: str) -> str:
         """Enhance the visual concept into a proper image generation prompt"""
         return (
-            f"Professional infographic illustration: {visual_concept}. "
-            f"Modern, clean design with bold colors. "
-            f"Data visualization style with icons and visual metaphors. "
+            f"Whimsical watercolor illustration: {visual_concept}. "
+            f"Dreamy watercolor painting style with soft flowing colors and artistic brush strokes. "
+            f"Ethereal and magical atmosphere, pastel color palette with gentle gradients. "
+            f"Hand-painted aesthetic, playful and imaginative, organic shapes. "
             f"Theme: {section_title}. "
-            f"High quality, corporate presentation style, no text overlays."
+            f"Delicate watercolor washes, artistic and whimsical, no text overlays."
         )
     
     def _create_sections(self, text: str) -> list[dict]:

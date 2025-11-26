@@ -170,13 +170,14 @@ class VeniceImageGenerator:
     ) -> Optional[GeneratedImage]:
         """Generate a hero/banner image for the report"""
         
-        # Create a prompt that represents the overall theme
+        # Create a prompt that represents the overall theme in watercolor whimsical style
         prompt = (
-            f"Professional hero banner illustration representing: {title}. "
-            f"Abstract modern design with flowing shapes and gradients. "
-            f"Corporate presentation style, sophisticated color palette. "
+            f"Whimsical watercolor hero banner illustration representing: {title}. "
+            f"Dreamy watercolor painting with soft flowing colors and artistic brush strokes. "
+            f"Ethereal and magical atmosphere, pastel color palette with gentle gradients. "
+            f"Hand-painted aesthetic, playful and imaginative, organic flowing shapes. "
             f"Conceptual visualization of: {summary[:200]}. "
-            f"Wide format, cinematic, high quality, no text."
+            f"Wide format, artistic watercolor style, high quality, no text."
         )
         
         # Use wider dimensions for hero
@@ -204,6 +205,13 @@ class VeniceImageGenerator:
         """Enhance prompt with style and quality keywords"""
         
         style_modifiers = {
+            "Watercolor Whimsical": (
+                "watercolor painting style, whimsical and dreamy, soft flowing colors, "
+                "artistic brush strokes, ethereal and magical atmosphere, "
+                "pastel color palette with gentle gradients, hand-painted aesthetic, "
+                "playful and imaginative, organic shapes and forms, "
+                "delicate watercolor washes, artistic illustration"
+            ),
             "Infographic": (
                 "infographic style, data visualization, clean modern design, "
                 "icons and symbols, professional business graphics"
@@ -230,9 +238,9 @@ class VeniceImageGenerator:
             )
         }
         
-        modifier = style_modifiers.get(style, style_modifiers["Infographic"])
+        modifier = style_modifiers.get(style, style_modifiers["Watercolor Whimsical"])
         
-        return f"{prompt}. Style: {modifier}. High quality, detailed, professional."
+        return f"{prompt}. Style: {modifier}. High quality, detailed, artistic."
     
     def get_image_as_base64(self, image: GeneratedImage) -> str:
         """Convert image to base64 string for embedding in HTML"""

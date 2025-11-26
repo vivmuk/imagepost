@@ -40,7 +40,7 @@ class ReportConfig(BaseModel):
     images_per_section: int = 1
     image_width: int = 1024
     image_height: int = 768
-    image_style: str = "Infographic"  # Style for generated images
+    image_style: str = "Watercolor Whimsical"  # Style for generated images
     output_dir: str = "reports"
 
 
