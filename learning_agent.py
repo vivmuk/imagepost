@@ -39,35 +39,27 @@ class LearningAgents:
         self.api_key = config.venice.api_key
         self.base_url = config.venice.base_url
         
-        # Initialize models
+        # Initialize models - Venice parameters are not supported in LangChain's ChatOpenAI
+        # The models will work without them, just with default Venice behavior
         self.reasoning_model = ChatOpenAI(
             model=config.venice.reasoning_model,
             openai_api_key=self.api_key,
             openai_api_base=self.base_url,
-            temperature=0.3,
-            model_kwargs={
-                "venice_parameters": {"include_venice_system_prompt": False, "strip_thinking_response": True}
-            }
+            temperature=0.3
         )
         
         self.writer_model = ChatOpenAI(
             model=config.venice.summarization_model,
             openai_api_key=self.api_key,
             openai_api_base=self.base_url,
-            temperature=0.5,
-            model_kwargs={
-                "venice_parameters": {"include_venice_system_prompt": False, "enable_web_search": "auto"}
-            }
+            temperature=0.5
         )
         
         self.designer_model = ChatOpenAI(
             model=config.venice.extraction_model,
             openai_api_key=self.api_key,
             openai_api_base=self.base_url,
-            temperature=0.7,
-            model_kwargs={
-                "venice_parameters": {"include_venice_system_prompt": False}
-            }
+            temperature=0.7
         )
         
         self.image_generator = VeniceImageGenerator()
