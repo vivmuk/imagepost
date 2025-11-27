@@ -622,10 +622,14 @@ async def root():
             </div>
         </div>
 
-        <div class="result-actions" id="resultSection">
-            <a href="#" id="viewBtn" target="_blank" class="btn-secondary">View Lesson</a>
-            <a href="#" id="downloadBtn" download class="btn-secondary">Download HTML</a>
-            <button onclick="resetUI()" class="btn-secondary">Learn Something Else</button>
+        <div class="result-actions" id="resultSection" style="display: none;">
+            <div style="width: 100%; margin-bottom: 20px;">
+                <div style="display: flex; gap: 12px; justify-content: center; margin-bottom: 20px;">
+                    <a href="#" id="downloadBtn" download class="btn-secondary">Download HTML</a>
+                    <button onclick="resetUI()" class="btn-secondary">Learn Something Else</button>
+                </div>
+                <div id="reportContainer" style="width: 100%; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; background: white;"></div>
+            </div>
         </div>
 
         <div class="error-message" id="errorMessage"></div>
@@ -766,17 +770,34 @@ async def root():
             }, 2000);
         }
 
-        function showResult(url) {
+        async function showResult(url) {
             const loadingSection = document.getElementById('loadingSection');
             const resultSection = document.getElementById('resultSection');
-            const viewBtn = document.getElementById('viewBtn');
             const downloadBtn = document.getElementById('downloadBtn');
+            const reportContainer = document.getElementById('reportContainer');
 
             loadingSection.style.display = 'none';
-            resultSection.style.display = 'flex';
+            resultSection.style.display = 'block';
             
-            viewBtn.href = url;
+            // Set download link
             downloadBtn.href = url + '/download';
+            
+            // Fetch and display report inline
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('Failed to load report');
+                
+                const html = await response.text();
+                reportContainer.innerHTML = html;
+                
+                // Scroll to report
+                reportContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } catch (error) {
+                console.error('Error loading report:', error);
+                reportContainer.innerHTML = `<div style="padding: 40px; text-align: center; color: #dc2626;">
+                    <p>Failed to load report. <a href="${url}" target="_blank">Click here to view in new tab</a></p>
+                </div>`;
+            }
         }
 
         function showError(msg) {
@@ -977,6 +998,49 @@ async def download_report(report_id: str):
             "Content-Disposition": f"attachment; filename=report_{report_id}.html"
         }
     )
+
+
+@app.post("/api/audio/generate")
+async def generate_audio(text: str = Form(...), voice: str = Form("af_sky")):
+    """Generate audio from text using Venice TTS API"""
+    import httpx
+    from config import config
+    
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.post(
+                "https://api.venice.ai/api/v1/audio/speech",
+                headers={
+                    "Authorization": f"Bearer {config.venice.api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "input": text,
+                    "model": "tts-kokoro",
+                    "voice": voice,
+                    "response_format": "mp3"
+                }
+            )
+            
+            if response.status_code != 200:
+                raise HTTPException(
+                    status_code=response.status_code,
+                    detail=f"Audio generation failed: {response.text}"
+                )
+            
+            # Return base64 encoded audio
+            import base64
+            audio_b64 = base64.b64encode(response.content).decode('utf-8')
+            
+            return JSONResponse(content={
+                "audio": f"data:audio/mpeg;base64,{audio_b64}",
+                "format": "mp3"
+            })
+        
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="Audio generation timed out")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating audio: {str(e)}")
 
 
 async def generate_report_task(

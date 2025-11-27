@@ -209,6 +209,74 @@ class ReportGenerator:
         }
         .print-btn:hover { transform: translateY(-2px); }
         
+        /* Audio Controls */
+        .audio-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 20px 0;
+            padding: 16px;
+            background: #f9fafb;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+        }
+        .audio-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 500;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .audio-btn:hover { background: #4338ca; transform: translateY(-1px); }
+        .audio-btn:disabled { background: #9ca3af; cursor: not-allowed; transform: none; }
+        .audio-btn.generating { background: #f59e0b; }
+        .audio-player {
+            flex: 1;
+            display: none;
+            align-items: center;
+            gap: 12px;
+        }
+        .audio-player.active { display: flex; }
+        .audio-player audio {
+            flex: 1;
+            height: 40px;
+        }
+        .play-pause-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: all 0.2s;
+        }
+        .play-pause-btn:hover { background: #4338ca; transform: scale(1.05); }
+        .audio-loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #ffffff;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
         @media print {
             body { background: white; }
             .container { box-shadow: none; padding: 0; margin: 0; max-width: 100%; }
@@ -229,13 +297,23 @@ class ReportGenerator:
         </div>
 
         {% for chapter in chapters %}
-        <div class="chapter-card">
+        <div class="chapter-card" data-chapter-index="{{ loop.index0 }}">
             <div class="chapter-num">Chapter {{ loop.index }} of {{ loop.length }}</div>
             <h2>{{ chapter.title }}</h2>
             
             {% if chapter.image_url %}
             <img src="{{ chapter.image_url }}" class="chapter-visual" alt="Visual for {{ chapter.title }}">
             {% endif %}
+            
+            <div class="audio-controls">
+                <button class="audio-btn" onclick="generateAudio({{ loop.index0 }})" id="audio-btn-{{ loop.index0 }}">
+                    <span id="audio-btn-text-{{ loop.index0 }}">🎵 Generate Audio</span>
+                </button>
+                <div class="audio-player" id="audio-player-{{ loop.index0 }}">
+                    <button class="play-pause-btn" onclick="toggleAudio({{ loop.index0 }})" id="play-pause-{{ loop.index0 }}">▶</button>
+                    <audio id="audio-element-{{ loop.index0 }}" controls></audio>
+                </div>
+            </div>
             
             <div class="chapter-content">
                 {{ chapter.content | safe }}
@@ -263,6 +341,102 @@ class ReportGenerator:
             {% endif %}
         </div>
     </div>
+    <script>
+        const audioData = {};
+        const chapterCount = {{ chapters | length }};
+        
+        async function generateAudio(chapterIndex) {
+            const btn = document.getElementById(`audio-btn-${chapterIndex}`);
+            const btnText = document.getElementById(`audio-btn-text-${chapterIndex}`);
+            const player = document.getElementById(`audio-player-${chapterIndex}`);
+            const audioElement = document.getElementById(`audio-element-${chapterIndex}`);
+            
+            if (audioData[chapterIndex]) {
+                // Audio already generated, just show player
+                player.classList.add('active');
+                audioElement.src = audioData[chapterIndex];
+                return;
+            }
+            
+            // Disable button and show loading
+            btn.disabled = true;
+            btn.classList.add('generating');
+            btnText.innerHTML = '<span class="audio-loading"></span> Generating...';
+            
+            try {
+                // Get chapter text (strip HTML tags)
+                const chapterCard = document.querySelector(`[data-chapter-index="${chapterIndex}"]`);
+                const contentDiv = chapterCard.querySelector('.chapter-content');
+                const textContent = contentDiv.innerText || contentDiv.textContent;
+                
+                // Generate audio
+                const formData = new FormData();
+                formData.append('text', textContent);
+                formData.append('voice', 'af_sky');
+                
+                const response = await fetch('/api/audio/generate', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Audio generation failed');
+                }
+                
+                const data = await response.json();
+                audioData[chapterIndex] = data.audio;
+                
+                // Show player and set audio source
+                player.classList.add('active');
+                audioElement.src = data.audio;
+                
+                // Reset button
+                btn.disabled = false;
+                btn.classList.remove('generating');
+                btnText.textContent = '🎵 Audio Ready';
+                
+            } catch (error) {
+                console.error('Error generating audio:', error);
+                btn.disabled = false;
+                btn.classList.remove('generating');
+                btnText.textContent = '❌ Error - Try Again';
+                alert('Failed to generate audio. Please try again.');
+            }
+        }
+        
+        function toggleAudio(chapterIndex) {
+            const audioElement = document.getElementById(`audio-element-${chapterIndex}`);
+            const playPauseBtn = document.getElementById(`play-pause-${chapterIndex}`);
+            
+            if (audioElement.paused) {
+                audioElement.play();
+                playPauseBtn.textContent = '⏸';
+            } else {
+                audioElement.pause();
+                playPauseBtn.textContent = '▶';
+            }
+        }
+        
+        // Update play/pause button when audio state changes
+        document.addEventListener('DOMContentLoaded', function() {
+            for (let index = 0; index < chapterCount; index++) {
+                const audioElement = document.getElementById(`audio-element-${index}`);
+                const playPauseBtn = document.getElementById(`play-pause-${index}`);
+                
+                if (audioElement) {
+                    audioElement.addEventListener('play', () => {
+                        playPauseBtn.textContent = '⏸';
+                    });
+                    audioElement.addEventListener('pause', () => {
+                        playPauseBtn.textContent = '▶';
+                    });
+                    audioElement.addEventListener('ended', () => {
+                        playPauseBtn.textContent = '▶';
+                    });
+                }
+            }
+        });
+    </script>
 </body>
 </html>''')
 
