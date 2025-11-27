@@ -293,3 +293,4 @@ async def generate_learning_path(topic: str):
     final_state = await graph.ainvoke(initial_state)
     return final_state["curriculum"]
 
+

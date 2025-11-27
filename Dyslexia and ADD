@@ -1,0 +1,281 @@
+# Lesson Builder Rules (Dyslexia + ADHD–Friendly)
+
+App goal:  
+Take a **concept / URL / pasted text** and turn it into a **short, structured, multisensory lesson** that works well for learners with **dyslexia and ADHD**.
+
+---
+
+## 1. Core Learning Principles
+
+The app should **always** try to:
+
+1. **Reduce cognitive load**
+   - Short chunks
+   - Simple language
+   - Minimal clutter
+
+2. **Use multiple senses**
+   - See (text, diagrams, color)
+   - Hear (audio / TTS)
+   - Say (prompts to explain out loud)
+   - Do (small actions like drag, select, reorder)
+
+3. **Externalize memory**
+   - Visible steps, checklists, and summaries
+   - Auto-generated “cheat sheets”
+
+4. **Support ADHD attention patterns**
+   - Short “missions”
+   - Clear start/finish
+   - Built-in timers or suggested time boxes
+
+---
+
+## 2. Lesson Structure Overview
+
+For any input (concept / URL / text), the app should create a lesson with these stages:
+
+1. **Preview** – Get the gist and the map  
+2. **Chunking** – Break into small, labeled sections  
+3. **Active Processing** – Turn content into user’s own words + visuals  
+4. **Teach-Back** – Prompt user to explain it  
+5. **Smart Review** – Generate quick review prompts for later
+
+Each stage below has implementation rules.
+
+---
+
+## 3. Stage 1: Preview
+
+**Goal:** Give the learner a fast “map” of the idea before details.
+
+When the app ingests content:
+
+- Extract:
+  - Title / main heading
+  - Subheadings
+  - Key terms (bold/italic/definitions)
+- Generate:
+  - **One-sentence “big idea”** in simple language
+  - **2–3 guiding questions**, e.g.:
+    - “What is this concept?”
+    - “Why does it matter?”
+    - “What are its main parts?”
+
+**Lesson UI:**
+
+- Show:
+  - “Big Idea” (1 sentence)
+  - 2–3 questions as bullets
+- Optional:
+  - “This lesson will take about X minutes” (keep short)
+
+---
+
+## 4. Stage 2: Chunking
+
+**Goal:** Turn long text into small, manageable pieces.
+
+Rules:
+
+- Split the content into **3–7 chunks**:
+  - Intro / overview
+  - 1–5 core sections
+  - Summary / wrap-up
+- Each chunk should:
+  - Have a short, clear **chunk title** (max ~5–7 words)
+  - Aim for **short paragraphs** (or bullet points)
+- Mark each chunk as a **mini mission**:
+  - e.g., “Chunk 2 of 5: How X causes Y”
+
+**Lesson UI:**
+
+- Display chunks as steps:
+  - Step 1, Step 2, Step 3…
+- Let user see **overall progress** (e.g., “Step 2 of 5”).
+
+---
+
+## 5. Stage 3: Active Processing (Per Chunk)
+
+**Goal:** Help the learner DO something with the content so it sticks.
+
+For each chunk, the app should:
+
+### 3.1 Multisensory Delivery
+
+- Provide **text view** in a dyslexia-friendly style:
+  - Simple font (e.g., Arial, Lexend)
+  - Larger font size and line spacing
+- Offer **audio**:
+  - Text-to-speech for the chunk
+  - Button: “Listen to this section”
+
+### 3.2 Simple Summary Prompt
+
+After the user reads/listens:
+
+- Generate and show a **1–2 sentence auto-summary**
+- Then prompt the user:
+
+> “In **your own words**, what is the one main point of this section?”
+
+- Let them respond via:
+  - Text input **or**
+  - Voice (speech-to-text)
+
+### 3.3 “3 Bullet” Extraction
+
+Prompt:
+
+> “Write **3 short bullets** that capture the most important ideas from this section.”
+
+- Provide an **AI-suggested 3-bullet draft** they can:
+  - Accept
+  - Edit
+  - Rewrite
+
+### 3.4 Quick Visual Hook
+
+For each chunk, auto-generate **one simple visual representation**, such as:
+
+- A mini **diagram** (e.g., A → B → C)
+- A **mind map** style list
+- A **comparison table** (if applicable)
+
+UI idea:
+
+- Show a simple, auto-generated diagram
+- Add a prompt:
+
+> “If you had to draw this on a napkin, how would you draw it?”
+
+(Users don’t *have* to draw, but the mental image helps.)
+
+---
+
+## 6. Stage 4: Teach-Back
+
+**Goal:** Check understanding by having the learner explain the concept.
+
+After all chunks are processed:
+
+- Show a simple outline of all chunks:
+  - Chunk titles
+  - The learner’s own summaries/bullets
+
+Then prompt:
+
+> “Without looking at the original text, explain this whole concept to:
+> - a 12-year-old
+> - or a busy coworker in 1–2 minutes.”
+
+Options:
+
+- **Voice note** (preferred)
+- Text input
+
+The app can:
+
+- Auto-summarize their explanation
+- Highlight:
+  - What they covered well
+  - What key idea(s) might be missing
+
+---
+
+## 7. Stage 5: Smart Review
+
+**Goal:** Make it easy to revisit without rereading everything.
+
+From the processed lesson, the app should auto-generate:
+
+1. **One-page “Cheat Sheet”**
+   - Title of concept
+   - Big idea (1–2 sentences)
+   - 3–7 key bullets
+   - 1 simple diagram or relationship map
+   - 1 concrete example
+
+2. **Quick Review Prompts**
+   - 3–5 question cards, e.g.:
+     - “What is this concept and why does it matter?”
+     - “Name the 3 most important points.”
+     - “Explain it in one sentence.”
+   - Optionally: basic quiz (multiple choice / true-false / fill-in)
+
+3. **Suggested Review Schedule**
+   - Same day: “Review your cheat sheet tonight (2–5 min)”
+   - Next day: “Test yourself with 3 questions”
+   - Few days later: “Redraw the diagram from memory”
+
+(Implementation of reminders can be handled by the app, but spec should support **spacing**.)
+
+---
+
+## 8. Dyslexia & ADHD–Friendly Defaults
+
+Where possible, the app should adopt these defaults:
+
+- **Visual design**
+  - Clean layout, lots of white space
+  - Short paragraphs and bullet lists
+  - No huge walls of text
+
+- **Language**
+  - Short sentences
+  - Minimal jargon
+  - Define any necessary jargon clearly
+
+- **Interaction**
+  - Many small steps instead of few big ones
+  - Clear labels: “Start,” “Next,” “Done”
+  - Always show progress (“Step 3 of 5”)
+
+- **Accessibility**
+  - Audio button on every text block
+  - Dictation option for all open-ended responses
+
+---
+
+## 9. Lesson Generation Pipeline (Developer Summary)
+
+1. **Input**
+   - Concept string **or**
+   - URL (HTML) **or**
+   - Raw text
+
+2. **Processing**
+   - Extract structure (headings, sections, key terms)
+   - Summarize: big idea + main sections
+   - Chunk into 3–7 sections
+   - For each chunk:
+     - Summarize
+     - Generate bullets
+     - Generate simple visual structure
+   - Aggregate into:
+     - Cheat sheet
+     - Review questions
+
+3. **Outputs for UI**
+   - `preview`: big idea, questions
+   - `chunks[]`: title, text, AI summary, AI bullets, audio source, visual representation
+   - `teach_back_prompts[]`
+   - `cheat_sheet`
+   - `review_questions[]`
+   - `suggested_review_schedule`
+
+---
+
+## 10. Future Ideas (Optional)
+
+- “Fun modes”:
+  - Explain concept as a story, comic, or analogy
+- Difficulty levels:
+  - Beginner (very simple language + fewer details)
+  - Standard (normal detail)
+  - Deep dive (advanced users)
+
+These should still follow the same **Preview → Chunk → Process → Teach → Review** flow.
+
+---
