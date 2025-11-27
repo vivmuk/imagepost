@@ -90,10 +90,10 @@ class ReportStatus(BaseModel):
 report_store = {}
 
 
-@app.get("/favicon.ico")
+@app.get("/favicon.ico", status_code=204)
 async def favicon():
     """Favicon endpoint to prevent 404 errors"""
-    return JSONResponse(content={}, status_code=204)
+    return None
 
 
 @app.get("/health")
