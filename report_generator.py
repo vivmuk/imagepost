@@ -181,7 +181,48 @@ class ReportGenerator:
         
         /* Dyslexia-friendly specifics */
         strong { color: var(--accent); font-weight: 600; }
-        .chapter-visual { width: 100%; height: 300px; object-fit: cover; border-radius: 12px; margin-bottom: 2rem; background: var(--light-accent); }
+        .image-wrapper {
+            position: relative;
+            width: 100%;
+            margin-bottom: 2rem;
+            background: var(--light-accent);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .chapter-visual { 
+            width: 100%; 
+            height: auto; 
+            max-height: 600px;
+            object-fit: contain; 
+            border-radius: 12px; 
+            display: block;
+            background: var(--light-accent);
+        }
+        .image-download-btn {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: rgba(79, 70, 229, 0.9);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 500;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            z-index: 10;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        .image-download-btn:hover { 
+            background: rgba(79, 70, 229, 1); 
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
         
         .preview-box { background: var(--light-accent); padding: 30px; border-radius: 12px; margin-bottom: 40px; }
         .big-idea { font-size: 1.25rem; font-weight: 500; }
@@ -302,7 +343,12 @@ class ReportGenerator:
             <h2>{{ chapter.title }}</h2>
             
             {% if chapter.image_url %}
-            <img src="{{ chapter.image_url }}" class="chapter-visual" alt="Visual for {{ chapter.title }}">
+            <div class="image-wrapper">
+                <img src="{{ chapter.image_url }}" class="chapter-visual" alt="Visual for {{ chapter.title }}" id="chapter-image-{{ loop.index0 }}">
+                <button class="image-download-btn" onclick="downloadImage({{ loop.index0 }}, '{{ chapter.title | replace("'", "\\'") }}')" title="Download Image">
+                    ⬇ Download
+                </button>
+            </div>
             {% endif %}
             
             <div class="audio-controls">
@@ -436,6 +482,24 @@ class ReportGenerator:
                 }
             }
         });
+        
+        function downloadImage(chapterIndex, chapterTitle) {
+            const img = document.getElementById(`chapter-image-${chapterIndex}`);
+            if (!img) return;
+            
+            // Create a temporary anchor element
+            const link = document.createElement('a');
+            link.href = img.src;
+            
+            // Clean filename
+            const safeTitle = chapterTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase().substring(0, 50);
+            link.download = `chapter_${chapterIndex + 1}_${safeTitle}.webp`;
+            
+            // Trigger download
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
     </script>
 </body>
 </html>''')

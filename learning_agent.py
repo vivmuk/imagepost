@@ -288,12 +288,22 @@ class LearningAgents:
         if image_prompt.startswith('"') and image_prompt.endswith('"'):
             image_prompt = image_prompt[1:-1]
         
-        # 2. Generate Image
+        # 2. Generate Image with wider aspect ratio for learning chapters
+        # Temporarily adjust dimensions for wider format (16:9 aspect ratio)
+        original_width = self.image_generator.width
+        original_height = self.image_generator.height
+        self.image_generator.width = 1280  # Wider for more content
+        self.image_generator.height = 720  # 16:9 aspect ratio
+        
         image_obj = await self.image_generator.generate_image(
             prompt=image_prompt,
             section_title=current_chapter['title'],
             style="Watercolor Whimsical"
         )
+        
+        # Restore original dimensions
+        self.image_generator.width = original_width
+        self.image_generator.height = original_height
         
         if image_obj:
             b64_img = self.image_generator.get_image_as_base64(image_obj)
