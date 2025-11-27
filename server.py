@@ -63,6 +63,11 @@ class TextInput(BaseModel):
     report_type: str = "executive"  # "executive" or "linkedin"
 
 
+class LearnInput(BaseModel):
+    """Input for learning path generation"""
+    topic: str
+
+
 class ReportStatus(BaseModel):
     """Report generation status"""
     status: str
@@ -471,6 +476,7 @@ async def root():
             <div class="tabs">
                 <button class="tab active" onclick="switchTab('url')">URL / Web</button>
                 <button class="tab" onclick="switchTab('text')">Direct Text</button>
+                <button class="tab" onclick="switchTab('learn')">Learn Topic</button>
             </div>
 
             <div id="url-tab" class="tab-content active">
@@ -560,6 +566,17 @@ async def root():
 
                 <button class="btn-generate" onclick="generateReport('text')">Generate Executive Report</button>
             </div>
+
+            <div id="learn-tab" class="tab-content">
+                <div class="input-group">
+                    <label>What do you want to learn?</label>
+                    <input type="text" id="learnInput" placeholder="e.g., Quantum Computing, French Revolution, Photosynthesis">
+                </div>
+                <p style="margin-bottom: 2rem; color: #666; font-size: 0.9rem;">
+                    Creates a 3-chapter, multi-sensory lesson designed for Dyslexia & ADHD. Orchestrated by autonomous AI agents.
+                </p>
+                <button class="btn-generate" onclick="generateReport('learn')">Start Learning Journey</button>
+            </div>
         </div>
 
         <div class="loading-container" id="loadingSection">
@@ -571,17 +588,17 @@ async def root():
             </div>
 
             <div class="status-steps">
-                <div class="step" id="step1">Extract</div>
-                <div class="step" id="step2">Summarize</div>
-                <div class="step" id="step3">Visuals</div>
-                <div class="step" id="step4">Report</div>
+                <div class="step" id="step1">Plan</div>
+                <div class="step" id="step2">Research</div>
+                <div class="step" id="step3">Write</div>
+                <div class="step" id="step4">Visuals</div>
             </div>
         </div>
 
         <div class="result-actions" id="resultSection">
-            <a href="#" id="viewBtn" target="_blank" class="btn-secondary">View Report</a>
+            <a href="#" id="viewBtn" target="_blank" class="btn-secondary">View Lesson</a>
             <a href="#" id="downloadBtn" download class="btn-secondary">Download HTML</a>
-            <button onclick="resetUI()" class="btn-secondary">Create New</button>
+            <button onclick="resetUI()" class="btn-secondary">Learn Something Else</button>
         </div>
 
         <div class="error-message" id="errorMessage"></div>
@@ -604,9 +621,12 @@ async def root():
             if (type === 'url') {
                 document.querySelector('.tab:nth-child(1)').classList.add('active');
                 document.getElementById('url-tab').classList.add('active');
-            } else {
+            } else if (type === 'text') {
                 document.querySelector('.tab:nth-child(2)').classList.add('active');
                 document.getElementById('text-tab').classList.add('active');
+            } else {
+                document.querySelector('.tab:nth-child(3)').classList.add('active');
+                document.getElementById('learn-tab').classList.add('active');
             }
         }
 
@@ -620,10 +640,11 @@ async def root():
             loadingSection.style.display = 'block';
             
             try {
-                let endpoint = '/api/summarize/url';
+                let endpoint = '';
                 let body = {};
                 
                 if (type === 'url') {
+                    endpoint = '/api/summarize/url';
                     const url = document.getElementById('urlInput').value;
                     if (!url) throw new Error("Please enter a URL");
                     
@@ -633,17 +654,22 @@ async def root():
                         generate_hero: document.getElementById('urlHero').checked,
                         report_type: document.querySelector('input[name="reportTypeUrl"]:checked').value
                     };
-                } else {
+                } else if (type === 'text') {
+                    endpoint = '/api/summarize/text';
                     const text = document.getElementById('textContent').value;
                     if (!text) throw new Error("Please enter text content");
                     
-                    endpoint = '/api/summarize/text';
                     body = {
                         text: text,
                         generate_images: document.getElementById('textImages').checked,
                         generate_hero: document.getElementById('textHero').checked,
                         report_type: document.querySelector('input[name="reportTypeText"]:checked').value
                     };
+                } else if (type === 'learn') {
+                    endpoint = '/api/learn';
+                    const topic = document.getElementById('learnInput').value;
+                    if (!topic) throw new Error("Please enter a topic");
+                    body = { topic: topic };
                 }
 
                 const response = await fetch(endpoint, {
@@ -682,17 +708,17 @@ async def root():
                     // Update UI based on message
                     statusMsg.textContent = data.message;
                     
-                    // Simple progress logic based on message content
-                    if (data.message.includes("Extracting")) {
+                    // Progress logic
+                    if (data.message.includes("Extracting") || data.message.includes("Planning")) {
                         progressFill.style.width = '25%';
                         steps[0].classList.add('active');
-                    } else if (data.message.includes("Summarizing") || data.message.includes("Analyzing")) {
+                    } else if (data.message.includes("Summarizing") || data.message.includes("Researching") || data.message.includes("Writing")) {
                         progressFill.style.width = '50%';
                         steps[1].classList.add('active');
-                    } else if (data.message.includes("Generating")) {
+                    } else if (data.message.includes("Visual") || data.message.includes("Designing")) {
                         progressFill.style.width = '75%';
                         steps[2].classList.add('active');
-                    } else if (data.message.includes("Compiling")) {
+                    } else if (data.message.includes("Compiling") || data.message.includes("Report")) {
                         progressFill.style.width = '90%';
                         steps[3].classList.add('active');
                     }
@@ -708,8 +734,6 @@ async def root():
                     }
                 } catch (e) {
                     console.error(e);
-                    // Don't clear interval immediately on transient network error, 
-                    // but if it persists, maybe. For now keep trying.
                 }
             }, 2000);
         }
@@ -743,6 +767,7 @@ async def root():
             document.getElementById('inputSection').style.display = 'block';
             document.getElementById('urlInput').value = '';
             document.getElementById('textContent').value = '';
+            document.getElementById('learnInput').value = '';
         }
     </script>
 </body>
@@ -754,9 +779,6 @@ async def root():
 async def summarize_url(input_data: URLInput, background_tasks: BackgroundTasks):
     """
     Generate a summary report from a URL
-    
-    The report is generated in the background. Use the returned report_id
-    to check status and retrieve the report.
     """
     report_id = f"url_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     report_store[report_id] = {"status": "processing", "result": None}
@@ -846,6 +868,25 @@ async def summarize_file(
     )
 
 
+@app.post("/api/learn", response_model=ReportStatus)
+async def learn_topic(input_data: LearnInput, background_tasks: BackgroundTasks):
+    """Generate a learning path for a topic"""
+    report_id = f"learn_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    report_store[report_id] = {"status": "processing", "result": None}
+    
+    background_tasks.add_task(
+        generate_learning_task,
+        report_id=report_id,
+        topic=input_data.topic
+    )
+    
+    return ReportStatus(
+        status="processing",
+        report_id=report_id,
+        message="Learning agents engaged. Check /api/status/{report_id} for progress."
+    )
+
+
 @app.get("/api/status/{report_id}", response_model=ReportStatus)
 async def get_status(report_id: str):
     """Check the status of a report generation task"""
@@ -871,7 +912,7 @@ async def get_status(report_id: str):
         return ReportStatus(
             status="processing",
             report_id=report_id,
-            message="Report is being generated..."
+            message=data.get("message", "Processing...")
         )
 
 
@@ -930,10 +971,6 @@ async def generate_report_task(
         report_generator = ReportGenerator()
         
         # Stage 1: Extract content
-        # Update status message directly in store if possible, or assume polling handles it? 
-        # server.py uses polling on get_status which reads from report_store.
-        # But here report_store[report_id] was init with {"status": "processing"}
-        # We should update the message field for polling to pick up.
         report_store[report_id]["message"] = "Extracting content..."
         
         content = await scraper.extract(source)
@@ -1009,20 +1046,44 @@ async def generate_report_task(
         }
 
 
-# Health check endpoint
-@app.get("/health")
-async def health_check():
-    """Health check endpoint - no imports required"""
-    return {"status": "healthy", "api": "Venice Summary Report Generator"}
-
-
-@app.get("/test")
-async def test():
-    """Simple test endpoint to verify server is running"""
-    return {"message": "Server is running!", "status": "ok"}
+async def generate_learning_task(report_id: str, topic: str):
+    """Background task for learning path generation"""
+    from learning_agent import generate_learning_path
+    from report_generator import ReportGenerator
+    
+    try:
+        report_store[report_id]["message"] = "Planning curriculum..."
+        
+        # Execute LangGraph workflow
+        # Note: Monitoring detailed progress from inside the graph is harder without a callback,
+        # so we update generic messages or use a custom callback handler if needed.
+        # For now, we just let it run.
+        
+        # We could update status periodically if we had a way to peek into the graph execution
+        # but awaiting the whole thing is simpler.
+        
+        curriculum = await generate_learning_path(topic)
+        
+        report_store[report_id]["message"] = "Compiling lesson..."
+        
+        generator = ReportGenerator()
+        html = generator.generate_learning_html(topic, curriculum)
+        
+        report_store[report_id] = {
+            "status": "completed",
+            "result": html,
+            "message": "Lesson Ready!"
+        }
+        
+    except Exception as e:
+        print(f"Error in learning generation: {e}")
+        report_store[report_id] = {
+            "status": "error",
+            "error": str(e),
+            "message": f"Error: {str(e)}"
+        }
 
 
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
-

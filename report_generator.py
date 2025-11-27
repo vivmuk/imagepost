@@ -149,6 +149,120 @@ class ReportGenerator:
             hero_image=hero_src
         )
     
+    def _get_learning_template(self) -> Template:
+        return Template('''<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Learning: {{ topic }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg: #ffffff; --text: #1f2937; --accent: #4f46e5; --light-accent: #e0e7ff; }
+        body { 
+            font-family: 'Lexend', 'Montserrat', sans-serif; 
+            color: var(--text); 
+            line-height: 2.0; 
+            font-size: 18px; 
+            max-width: 850px; 
+            margin: 0 auto; 
+            padding: 40px 20px; 
+            background: #fafafa;
+        }
+        .container { background: white; padding: 60px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+        h1 { font-size: 3rem; color: var(--accent); margin-bottom: 1rem; line-height: 1.2; }
+        h2 { font-size: 2rem; margin-top: 3rem; margin-bottom: 1.5rem; border-bottom: 3px solid var(--light-accent); padding-bottom: 10px; }
+        h3 { font-size: 1.5rem; color: #4b5563; margin-top: 2rem; }
+        p { margin-bottom: 1.5rem; }
+        ul { margin-bottom: 1.5rem; padding-left: 25px; }
+        li { margin-bottom: 10px; }
+        
+        /* Dyslexia-friendly specifics */
+        strong { color: var(--accent); font-weight: 600; }
+        .chapter-visual { width: 100%; height: 300px; object-fit: cover; border-radius: 12px; margin-bottom: 2rem; background: var(--light-accent); }
+        
+        .preview-box { background: var(--light-accent); padding: 30px; border-radius: 12px; margin-bottom: 40px; }
+        .big-idea { font-size: 1.25rem; font-weight: 500; }
+        
+        .chapter-card { margin-bottom: 60px; padding: 30px; border: 2px solid #f3f4f6; border-radius: 12px; }
+        .chapter-num { text-transform: uppercase; font-weight: 600; color: var(--accent); font-size: 0.9rem; letter-spacing: 1px; margin-bottom: 10px; }
+        
+        .review-section { background: #fffbeb; border: 2px solid #fcd34d; padding: 30px; border-radius: 12px; margin-top: 60px; }
+        
+        .print-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+            transition: transform 0.2s;
+            z-index: 100;
+        }
+        .print-btn:hover { transform: translateY(-2px); }
+        
+        @media print {
+            body { background: white; }
+            .container { box-shadow: none; padding: 0; margin: 0; max-width: 100%; }
+            .chapter-card { page-break-inside: avoid; border: none; padding: 0; margin-bottom: 40px; }
+            .print-btn { display: none; }
+            .preview-box, .review-section { page-break-inside: avoid; }
+        }
+    </style>
+</head>
+<body>
+    <button class="print-btn" onclick="window.print()">Save as PDF</button>
+    <div class="container">
+        <h1>{{ topic }}</h1>
+        
+        <div class="preview-box">
+            <h2>Preview: The Big Idea</h2>
+            <p class="big-idea">This lesson breaks down <strong>{{ topic }}</strong> into 3 clear chapters to help you master the core concepts quickly.</p>
+        </div>
+
+        {% for chapter in chapters %}
+        <div class="chapter-card">
+            <div class="chapter-num">Chapter {{ loop.index }} of {{ loop.length }}</div>
+            <h2>{{ chapter.title }}</h2>
+            
+            {% if chapter.image_url %}
+            <img src="{{ chapter.image_url }}" class="chapter-visual" alt="Visual for {{ chapter.title }}">
+            {% endif %}
+            
+            <div class="chapter-content">
+                {{ chapter.content | safe }}
+            </div>
+        </div>
+        {% endfor %}
+        
+        <div class="review-section">
+            <h2>Smart Review: Cheat Sheet</h2>
+            <ul>
+                {% for chapter in chapters %}
+                <li><strong>{{ chapter.title }}:</strong> {{ chapter.description }}</li>
+                {% endfor %}
+            </ul>
+            <p><strong>Teach Back Challenge:</strong> Try to explain this topic to a friend in under 2 minutes using only the images above!</p>
+        </div>
+    </div>
+</body>
+</html>''')
+
+    def generate_learning_html(self, topic: str, curriculum: list) -> str:
+        template = self._get_learning_template()
+        return template.render(
+            topic=topic,
+            chapters=curriculum
+        )
+
     def _get_template(self) -> Template:
         """Return the Jinja2 HTML template"""
         return Template('''<!DOCTYPE html>
