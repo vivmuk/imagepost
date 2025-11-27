@@ -21,7 +21,7 @@ class VeniceConfig(BaseModel):
     # Model selection for different tasks
     summarization_model: str = "qwen3-235b"  # Venice Large - best for complex summarization
     extraction_model: str = "mistral-31-24b"  # Venice Medium - good for structured extraction, supports vision
-    image_model: str = "qwen-image"  # User requested Qwen Image
+    image_model: str = "nano-banana-pro"  # User requested Nano Banana
     
     # Generation parameters
     max_tokens: int = 4096

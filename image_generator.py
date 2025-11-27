@@ -115,7 +115,7 @@ class VeniceImageGenerator:
             "prompt": enhanced_prompt,
             "width": self.width,
             "height": self.height,
-            "steps": 8,  # qwen-image uses 8 steps max
+            # "steps": 20,  # Let the API use the model's default
             "format": "webp",
             "safe_mode": True,
             "hide_watermark": False

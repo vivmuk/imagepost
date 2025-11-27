@@ -597,7 +597,7 @@ The output should be the raw text of the post, ready to copy-paste."""
             }
         }
 
-        prompt = f"""Write a high-impact LinkedIn Article (Pulse style) based on this content.
+        prompt = f"""Write a high-impact, viral LinkedIn Post (long-form status update) based on this content. Do NOT write a blog article; write a social media post.
 
 CONTENT TITLE: {content.title}
 
@@ -605,13 +605,14 @@ CONTENT:
 {content.text[:config.scraper.max_content_length]}
 
 Requirements:
-1. Headline: Catchy, professional, click-worthy.
-2. Introduction: engaging hook, context, and thesis statement.
-3. Key Points: Extract 3-5 deep insights. For each, provide a "Title" and a "Detail" paragraph (3-4 sentences) explaining the nuance.
-4. Conclusion: Synthesize the insights.
-5. Call to Action: Engagement prompt.
+1. Headline: A catchy first line/hook for the post (this will be the bold opening).
+2. Introduction: The setup and context (keep it punchy and engaging).
+3. Key Points: Extract 3-5 deep insights. For each, provide a "Title" (as a bold header) and a "Detail" (short, insightful explanation).
+4. Conclusion: A powerful closing thought.
+5. Call to Action: A question to drive engagement in comments.
 6. Visual Concept: Describe a single, unified visual metaphor that captures all these key points. This description will be used to generate a "whimsical watercolor" image. Make it artistic and symbolic.
 
+Style: Use emojis, short paragraphs, extra whitespace, and conversational tone suitable for a thought leader.
 Target Audience: Senior executives and industry leaders."""
 
         response = await self._call_venice_api(prompt, schema)
