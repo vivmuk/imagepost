@@ -39,15 +39,20 @@ class LearningState(TypedDict):
 def strip_reasoning_tokens(content: str) -> str:
     """Strip reasoning/thinking tokens from model responses"""
     import re
-    # Remove <thinking>...</thinking> blocks
+    if not content:
+        return content
+    
+    # Remove <thinking>...</thinking> blocks (including multiline)
     content = re.sub(r'<thinking>.*?</thinking>', '', content, flags=re.DOTALL | re.IGNORECASE)
-    # Remove <reasoning>...</reasoning> blocks
+    # Remove <reasoning>...</reasoning> blocks (including multiline)
     content = re.sub(r'<reasoning>.*?</reasoning>', '', content, flags=re.DOTALL | re.IGNORECASE)
-    # Remove <think>...</think> blocks
+    # Remove <think>...</think> blocks (including multiline)
     content = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL | re.IGNORECASE)
     # Remove any standalone thinking/reasoning tags
     content = re.sub(r'</?thinking>', '', content, flags=re.IGNORECASE)
     content = re.sub(r'</?reasoning>', '', content, flags=re.IGNORECASE)
+    content = re.sub(r'</?think>', '', content, flags=re.IGNORECASE)
+    
     return content.strip()
 
 # --- Agent Definitions ---
