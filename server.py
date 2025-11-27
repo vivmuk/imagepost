@@ -41,8 +41,18 @@ async def startup_event():
         from config import config
         print(f"✓ Config loaded successfully")
         print(f"✓ API Key configured: {'Yes' if config.venice.api_key else 'No'}")
+        
+        # Test optional imports (don't fail if they don't work)
+        try:
+            from learning_agent import generate_learning_path
+            print(f"✓ Learning agent module loaded")
+        except Exception as e:
+            print(f"⚠ Learning agent not available: {e}")
+            
     except Exception as e:
         print(f"⚠ Warning during startup: {e}")
+        import traceback
+        traceback.print_exc()
         # Don't fail startup if config has issues
 
 
@@ -84,6 +94,12 @@ report_store = {}
 async def favicon():
     """Favicon endpoint to prevent 404 errors"""
     return JSONResponse(content={}, status_code=204)
+
+
+@app.get("/health")
+async def health():
+    """Health check endpoint for Railway deployment"""
+    return JSONResponse(content={"status": "healthy", "service": "venice-summary-api"})
 
 
 @app.get("/", response_class=HTMLResponse)
