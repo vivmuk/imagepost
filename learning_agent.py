@@ -70,7 +70,7 @@ class LearningAgents:
         Creates a 3-chapter curriculum based on the topic.
         """
         topic = state["topic"]
-        console.print(f"[bold blue]Planner Agent:[/bold blue] Designing curriculum for '{topic}'...")
+        console.print(f"Planner Agent: Designing curriculum for '{topic}'...")
         
         system_prompt = """You are an expert curriculum designer specializing in Dyslexia and ADHD-friendly learning.
         Create a short, structured 3-chapter overview of the topic provided.
@@ -104,27 +104,41 @@ class LearningAgents:
                 content = content.split("```json")[1].split("```")[0].strip()
             elif "```" in content:
                 content = content.split("```")[1].split("```")[0].strip()
+            
+            # Try to find JSON in the content if direct parsing fails
+            if not content.strip().startswith("{"):
+                # Look for JSON object in the text
+                import re
+                json_match = re.search(r'\{[\s\S]*\}', content)
+                if json_match:
+                    content = json_match.group(0)
+                else:
+                    raise ValueError("No JSON object found in response")
                 
             data = json.loads(content)
             chapters = []
             for ch in data.get("chapters", []):
                 chapters.append({
-                    "title": ch["title"],
-                    "description": ch["description"],
+                    "title": ch.get("title", "Chapter"),
+                    "description": ch.get("description", ""),
                     "content": "",
                     "image_prompt": "",
                     "image_url": ""
                 })
             
+            if not chapters:
+                raise ValueError("No chapters found in response")
+            
             return {"curriculum": chapters, "current_chapter_index": 0}
         except Exception as e:
-            console.print(f"[red]Planner Error:[/red] {e}")
-            # Fallback curriculum
+            console.print(f"Planner Error: {e}")
+            console.print(f"Response content: {content[:200]}...")
+            # Fallback curriculum based on topic
             return {
                 "curriculum": [
-                    {"title": "Introduction", "description": "Overview of the concept", "content": "", "image_prompt": "", "image_url": ""},
-                    {"title": "Key Concepts", "description": "Core details and mechanics", "content": "", "image_prompt": "", "image_url": ""},
-                    {"title": "Conclusion", "description": "Summary and application", "content": "", "image_prompt": "", "image_url": ""}
+                    {"title": f"Introduction to {topic}", "description": "Overview of the concept", "content": "", "image_prompt": "", "image_url": ""},
+                    {"title": f"Understanding {topic}", "description": "Core details and mechanics", "content": "", "image_prompt": "", "image_url": ""},
+                    {"title": f"Applying {topic}", "description": "Summary and practical application", "content": "", "image_prompt": "", "image_url": ""}
                 ],
                 "current_chapter_index": 0
             }
@@ -139,7 +153,7 @@ class LearningAgents:
         current_chapter = chapters[index]
         topic = state["topic"]
         
-        console.print(f"[bold green]Writer Agent:[/bold blue] Researching and writing '{current_chapter['title']}'...")
+        console.print(f"Writer Agent: Researching and writing '{current_chapter['title']}'...")
         
         system_prompt = """You are an expert educational content writer specializing in accessible, multi-sensory learning for people with Dyslexia and ADHD.
         
@@ -184,7 +198,7 @@ class LearningAgents:
         chapters = state["curriculum"]
         current_chapter = chapters[index]
         
-        console.print(f"[bold magenta]Designer Agent:[/bold magenta] Creating visual for '{current_chapter['title']}'...")
+        console.print(f"Designer Agent: Creating visual for '{current_chapter['title']}'...")
         
         # 1. Generate Prompt
         prompt_gen_msg = [
@@ -223,7 +237,7 @@ class LearningAgents:
         Agent 5: Integrator
         Compiles the final report.
         """
-        console.print("[bold yellow]Integrator Agent:[/bold yellow] Compiling final report...")
+        console.print("Integrator Agent: Compiling final report...")
         # In a real scenario, this might do more synthesis.
         # For now, the state 'curriculum' holds the compiled data.
         return {"final_report": "Compiled"}
