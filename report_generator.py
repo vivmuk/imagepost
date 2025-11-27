@@ -244,23 +244,34 @@ class ReportGenerator:
         {% endfor %}
         
         <div class="review-section">
-            <h2>Smart Review: Cheat Sheet</h2>
-            <ul>
-                {% for chapter in chapters %}
-                <li><strong>{{ chapter.title }}:</strong> {{ chapter.description }}</li>
-                {% endfor %}
-            </ul>
-            <p><strong>Teach Back Challenge:</strong> Try to explain this topic to a friend in under 2 minutes using only the images above!</p>
+            <h2>Smart Review: Key Takeaways</h2>
+            {% if chapters[0].review_content %}
+                {{ chapters[0].review_content | safe }}
+            {% else %}
+                <h3>Key Facts to Remember</h3>
+                <ul>
+                    {% for chapter in chapters %}
+                    <li><strong>{{ chapter.title }}:</strong> {{ chapter.description }}</li>
+                    {% endfor %}
+                </ul>
+                <h3>Questions to Ponder</h3>
+                <ul>
+                    <li>How does this topic connect to your daily life?</li>
+                    <li>What questions do you still have about this topic?</li>
+                    <li>How would you explain this to someone else?</li>
+                </ul>
+            {% endif %}
         </div>
     </div>
 </body>
 </html>''')
 
-    def generate_learning_html(self, topic: str, curriculum: list) -> str:
+    def generate_learning_html(self, topic: str, curriculum: list, education_level: str = "High School") -> str:
         template = self._get_learning_template()
         return template.render(
             topic=topic,
-            chapters=curriculum
+            chapters=curriculum,
+            education_level=education_level
         )
 
     def _get_template(self) -> Template:

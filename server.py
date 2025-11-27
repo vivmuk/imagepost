@@ -76,6 +76,7 @@ class TextInput(BaseModel):
 class LearnInput(BaseModel):
     """Input for learning path generation"""
     topic: str
+    education_level: str = "High School"  # Options: Elementary, Middle School, High School, College, Adult Learner
 
 
 class ReportStatus(BaseModel):
@@ -588,6 +589,16 @@ async def root():
                     <label>What do you want to learn?</label>
                     <input type="text" id="learnInput" placeholder="e.g., Quantum Computing, French Revolution, Photosynthesis">
                 </div>
+                <div class="input-group">
+                    <label>Education Level</label>
+                    <select id="educationLevel" style="width: 100%; padding: 0.75rem; border: 2px solid var(--text); background: white; font-family: var(--font); font-size: 1rem;">
+                        <option value="Elementary">Elementary School</option>
+                        <option value="Middle School">Middle School</option>
+                        <option value="High School" selected>High School</option>
+                        <option value="College">College</option>
+                        <option value="Adult Learner">Adult Learner</option>
+                    </select>
+                </div>
                 <p style="margin-bottom: 2rem; color: #666; font-size: 0.9rem;">
                     Creates a 3-chapter, multi-sensory lesson designed for Dyslexia & ADHD. Orchestrated by autonomous AI agents.
                 </p>
@@ -684,8 +695,9 @@ async def root():
                 } else if (type === 'learn') {
                     endpoint = '/api/learn';
                     const topic = document.getElementById('learnInput').value;
+                    const educationLevel = document.getElementById('educationLevel').value;
                     if (!topic) throw new Error("Please enter a topic");
-                    body = { topic: topic };
+                    body = { topic: topic, education_level: educationLevel };
                 }
 
                 const response = await fetch(endpoint, {
@@ -784,6 +796,7 @@ async def root():
             document.getElementById('urlInput').value = '';
             document.getElementById('textContent').value = '';
             document.getElementById('learnInput').value = '';
+            document.getElementById('educationLevel').value = 'High School';
         }
     </script>
 </body>
@@ -893,7 +906,8 @@ async def learn_topic(input_data: LearnInput, background_tasks: BackgroundTasks)
     background_tasks.add_task(
         generate_learning_task,
         report_id=report_id,
-        topic=input_data.topic
+        topic=input_data.topic,
+        education_level=input_data.education_level
     )
     
     return ReportStatus(
@@ -1062,7 +1076,7 @@ async def generate_report_task(
         }
 
 
-async def generate_learning_task(report_id: str, topic: str):
+async def generate_learning_task(report_id: str, topic: str, education_level: str = "High School"):
     """Background task for learning path generation"""
     from learning_agent import generate_learning_path
     from report_generator import ReportGenerator
@@ -1071,19 +1085,12 @@ async def generate_learning_task(report_id: str, topic: str):
         report_store[report_id]["message"] = "Planning curriculum..."
         
         # Execute LangGraph workflow
-        # Note: Monitoring detailed progress from inside the graph is harder without a callback,
-        # so we update generic messages or use a custom callback handler if needed.
-        # For now, we just let it run.
-        
-        # We could update status periodically if we had a way to peek into the graph execution
-        # but awaiting the whole thing is simpler.
-        
-        curriculum = await generate_learning_path(topic)
+        curriculum = await generate_learning_path(topic, education_level)
         
         report_store[report_id]["message"] = "Compiling lesson..."
         
         generator = ReportGenerator()
-        html = generator.generate_learning_html(topic, curriculum)
+        html = generator.generate_learning_html(topic, curriculum, education_level)
         
         report_store[report_id] = {
             "status": "completed",
