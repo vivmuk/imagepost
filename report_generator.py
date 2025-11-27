@@ -388,19 +388,20 @@ class ReportGenerator:
         </div>
     </div>
     <script>
-        const audioData = {};
+        // Ensure functions are in global scope
+        window.audioData = window.audioData || {};
         const chapterCount = {{ chapters | length }};
         
-        async function generateAudio(chapterIndex) {
+        window.generateAudio = async function(chapterIndex) {
             const btn = document.getElementById(`audio-btn-${chapterIndex}`);
             const btnText = document.getElementById(`audio-btn-text-${chapterIndex}`);
             const player = document.getElementById(`audio-player-${chapterIndex}`);
             const audioElement = document.getElementById(`audio-element-${chapterIndex}`);
             
-            if (audioData[chapterIndex]) {
+            if (window.audioData[chapterIndex]) {
                 // Audio already generated, just show player
                 player.classList.add('active');
-                audioElement.src = audioData[chapterIndex];
+                audioElement.src = window.audioData[chapterIndex];
                 return;
             }
             
@@ -430,7 +431,7 @@ class ReportGenerator:
                 }
                 
                 const data = await response.json();
-                audioData[chapterIndex] = data.audio;
+                window.audioData[chapterIndex] = data.audio;
                 
                 // Show player and set audio source
                 player.classList.add('active');
@@ -450,7 +451,7 @@ class ReportGenerator:
             }
         }
         
-        function toggleAudio(chapterIndex) {
+        window.toggleAudio = function(chapterIndex) {
             const audioElement = document.getElementById(`audio-element-${chapterIndex}`);
             const playPauseBtn = document.getElementById(`play-pause-${chapterIndex}`);
             
@@ -464,26 +465,27 @@ class ReportGenerator:
         }
         
         // Update play/pause button when audio state changes
-        document.addEventListener('DOMContentLoaded', function() {
+        // Use immediate execution since DOM is already loaded when injected
+        (function() {
             for (let index = 0; index < chapterCount; index++) {
                 const audioElement = document.getElementById(`audio-element-${index}`);
                 const playPauseBtn = document.getElementById(`play-pause-${index}`);
                 
-                if (audioElement) {
+                if (audioElement && playPauseBtn) {
                     audioElement.addEventListener('play', () => {
-                        playPauseBtn.textContent = '⏸';
+                        if (playPauseBtn) playPauseBtn.textContent = '⏸';
                     });
                     audioElement.addEventListener('pause', () => {
-                        playPauseBtn.textContent = '▶';
+                        if (playPauseBtn) playPauseBtn.textContent = '▶';
                     });
                     audioElement.addEventListener('ended', () => {
-                        playPauseBtn.textContent = '▶';
+                        if (playPauseBtn) playPauseBtn.textContent = '▶';
                     });
                 }
             }
-        });
+        })();
         
-        function downloadImage(chapterIndex, chapterTitle) {
+        window.downloadImage = function(chapterIndex, chapterTitle) {
             const img = document.getElementById(`chapter-image-${chapterIndex}`);
             if (!img) return;
             

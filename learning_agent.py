@@ -289,27 +289,65 @@ class LearningAgents:
             image_prompt = image_prompt[1:-1]
         
         # 2. Generate Image with wider aspect ratio for learning chapters
-        # Temporarily adjust dimensions for wider format (16:9 aspect ratio)
+        # Use try-finally to ensure dimensions are always restored
         original_width = self.image_generator.width
         original_height = self.image_generator.height
-        self.image_generator.width = 1280  # Wider for more content
-        self.image_generator.height = 720  # 16:9 aspect ratio
         
-        image_obj = await self.image_generator.generate_image(
-            prompt=image_prompt,
-            section_title=current_chapter['title'],
-            style="Watercolor Whimsical"
-        )
-        
-        # Restore original dimensions
-        self.image_generator.width = original_width
-        self.image_generator.height = original_height
-        
-        if image_obj:
-            b64_img = self.image_generator.get_image_as_base64(image_obj)
-            image_url = f"data:image/webp;base64,{b64_img}"
-            chapters[index]["image_url"] = image_url
+        try:
+            # Temporarily adjust dimensions for wider format (16:9 aspect ratio)
+            self.image_generator.width = 1280  # Wider for more content
+            self.image_generator.height = 720  # 16:9 aspect ratio
+            
+            # Generate image with retry logic
+            max_retries = 3
+            image_obj = None
+            
+            for attempt in range(max_retries):
+                try:
+                    console.print(f"[dim]Attempting image generation (attempt {attempt + 1}/{max_retries})...[/dim]")
+                    image_obj = await self.image_generator.generate_image(
+                        prompt=image_prompt,
+                        section_title=current_chapter['title'],
+                        index=index,
+                        style="Watercolor Whimsical"
+                    )
+                    
+                    if image_obj:
+                        break
+                    elif attempt < max_retries - 1:
+                        console.print(f"[yellow]Image generation failed, retrying in {2 ** attempt} seconds...[/yellow]")
+                        await asyncio.sleep(2 ** attempt)  # Exponential backoff
+                        
+                except Exception as e:
+                    console.print(f"[red]Error on attempt {attempt + 1}: {str(e)}[/red]")
+                    if attempt < max_retries - 1:
+                        await asyncio.sleep(2 ** attempt)
+                    else:
+                        console.print(f"[red]Failed to generate image after {max_retries} attempts[/red]")
+            
+            if image_obj:
+                b64_img = self.image_generator.get_image_as_base64(image_obj)
+                image_url = f"data:image/webp;base64,{b64_img}"
+                chapters[index]["image_url"] = image_url
+                chapters[index]["image_prompt"] = image_prompt
+                console.print(f"[green]✓ Image generated successfully for '{current_chapter['title']}'[/green]")
+            else:
+                console.print(f"[yellow]⚠ Image generation failed for '{current_chapter['title']}', continuing without image[/yellow]")
+                # Set empty image_url so template knows there's no image
+                chapters[index]["image_url"] = ""
+                chapters[index]["image_prompt"] = image_prompt
+                
+        except Exception as e:
+            console.print(f"[red]Unexpected error in designer agent: {str(e)}[/red]")
+            import traceback
+            console.print(f"[dim]{traceback.format_exc()}[/dim]")
+            # Continue without image
+            chapters[index]["image_url"] = ""
             chapters[index]["image_prompt"] = image_prompt
+        finally:
+            # Always restore original dimensions
+            self.image_generator.width = original_width
+            self.image_generator.height = original_height
         
         return {"curriculum": chapters}
 

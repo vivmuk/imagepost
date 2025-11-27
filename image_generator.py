@@ -143,9 +143,14 @@ class VeniceImageGenerator:
                 data = response.json()
                 
                 # Venice returns base64 encoded images in the 'images' array
-                if "images" in data and data["images"]:
+                if "images" in data and data["images"] and len(data["images"]) > 0:
                     image_b64 = data["images"][0]
+                    if not image_b64:
+                        raise ValueError("Empty image data received from API")
                     image_bytes = base64.b64decode(image_b64)
+                    
+                    if len(image_bytes) == 0:
+                        raise ValueError("Decoded image is empty")
                     
                     return GeneratedImage(
                         section_title=section_title,
@@ -154,11 +159,22 @@ class VeniceImageGenerator:
                         format="webp",
                         filename=filename
                     )
+                else:
+                    error_msg = data.get("error", "No images in response") if isinstance(data, dict) else "Invalid response format"
+                    raise ValueError(f"Image generation failed: {error_msg}")
                 
         except httpx.HTTPStatusError as e:
-            console.print(f"[red]HTTP Error {e.response.status_code}: {e.response.text[:200]}[/red]")
+            error_text = e.response.text[:500] if hasattr(e.response, 'text') else str(e)
+            console.print(f"[red]HTTP Error {e.response.status_code}: {error_text}[/red]")
+            raise  # Re-raise to allow retry logic
+        except httpx.TimeoutException as e:
+            console.print(f"[red]Timeout error generating image: {str(e)}[/red]")
+            raise  # Re-raise to allow retry logic
         except Exception as e:
-            console.print(f"[red]Error generating image: {e}[/red]")
+            console.print(f"[red]Error generating image: {type(e).__name__}: {str(e)}[/red]")
+            import traceback
+            console.print(f"[dim]{traceback.format_exc()}[/dim]")
+            raise  # Re-raise to allow retry logic
         
         return None
     

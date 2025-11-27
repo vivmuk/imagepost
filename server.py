@@ -790,6 +790,24 @@ async def root():
                 const html = await response.text();
                 reportContainer.innerHTML = html;
                 
+                // Extract and execute scripts to ensure functions are available
+                // Scripts in innerHTML don't execute automatically, so we need to re-execute them
+                const scripts = Array.from(reportContainer.querySelectorAll('script'));
+                scripts.forEach(oldScript => {
+                    const newScript = document.createElement('script');
+                    if (oldScript.src) {
+                        newScript.src = oldScript.src;
+                        newScript.async = false;
+                        document.body.appendChild(newScript);
+                    } else {
+                        // For inline scripts, append to body so they execute
+                        newScript.textContent = oldScript.textContent;
+                        document.body.appendChild(newScript);
+                    }
+                    // Remove the old script from the container
+                    oldScript.remove();
+                });
+                
                 // Scroll to report
                 reportContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
             } catch (error) {
