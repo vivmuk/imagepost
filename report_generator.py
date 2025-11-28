@@ -3,6 +3,8 @@ HTML Report Generator
 Creates beautiful, styled HTML reports with embedded images
 """
 import base64
+import re
+import html
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
@@ -13,6 +15,122 @@ from summarizer import StructuredSummary
 from image_generator import GeneratedImage
 
 console = Console()
+
+
+def markdown_to_html(text: str) -> str:
+    """Convert markdown text to HTML"""
+    if not text:
+        return ""
+    
+    # Escape HTML entities first to prevent XSS
+    # But we need to be careful not to break markdown
+    lines = text.split('\n')
+    result_lines = []
+    in_list = False
+    list_type = None
+    
+    for line in lines:
+        stripped = line.strip()
+        
+        # Skip empty lines
+        if not stripped:
+            if in_list:
+                result_lines.append(f'</{list_type}>')
+                in_list = False
+                list_type = None
+            result_lines.append('')
+            continue
+        
+        # Headers
+        if stripped.startswith('### '):
+            if in_list:
+                result_lines.append(f'</{list_type}>')
+                in_list = False
+            content = html.escape(stripped[4:])
+            content = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', content)
+            result_lines.append(f'<h3>{content}</h3>')
+            continue
+        elif stripped.startswith('## '):
+            if in_list:
+                result_lines.append(f'</{list_type}>')
+                in_list = False
+            content = html.escape(stripped[3:])
+            content = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', content)
+            result_lines.append(f'<h2>{content}</h2>')
+            continue
+        elif stripped.startswith('# '):
+            if in_list:
+                result_lines.append(f'</{list_type}>')
+                in_list = False
+            content = html.escape(stripped[2:])
+            content = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', content)
+            result_lines.append(f'<h1>{content}</h1>')
+            continue
+        
+        # Horizontal rule
+        if stripped == '---' or stripped == '***':
+            if in_list:
+                result_lines.append(f'</{list_type}>')
+                in_list = False
+            result_lines.append('<hr>')
+            continue
+        
+        # Numbered list items
+        num_match = re.match(r'^(\d+)\.\s+(.+)$', stripped)
+        if num_match:
+            content = html.escape(num_match.group(2))
+            content = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', content)
+            if not in_list or list_type != 'ol':
+                if in_list:
+                    result_lines.append(f'</{list_type}>')
+                result_lines.append('<ol>')
+                in_list = True
+                list_type = 'ol'
+            result_lines.append(f'<li>{content}</li>')
+            continue
+        
+        # Bullet list items
+        if stripped.startswith('- ') or stripped.startswith('* '):
+            content = html.escape(stripped[2:])
+            content = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', content)
+            if not in_list or list_type != 'ul':
+                if in_list:
+                    result_lines.append(f'</{list_type}>')
+                result_lines.append('<ul>')
+                in_list = True
+                list_type = 'ul'
+            result_lines.append(f'<li>{content}</li>')
+            continue
+        
+        # Blockquotes
+        if stripped.startswith('> '):
+            if in_list:
+                result_lines.append(f'</{list_type}>')
+                in_list = False
+            content = html.escape(stripped[2:])
+            content = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', content)
+            result_lines.append(f'<blockquote>{content}</blockquote>')
+            continue
+        
+        # Close list if we're no longer in list items
+        if in_list:
+            result_lines.append(f'</{list_type}>')
+            in_list = False
+            list_type = None
+        
+        # Regular paragraph
+        content = html.escape(stripped)
+        # Bold
+        content = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', content)
+        # Italic
+        content = re.sub(r'\*(.+?)\*', r'<em>\1</em>', content)
+        result_lines.append(f'<p>{content}</p>')
+    
+    # Close any open list
+    if in_list:
+        result_lines.append(f'</{list_type}>')
+    
+    return '\n'.join(result_lines)
 
 
 class ReportGenerator:
@@ -518,14 +636,22 @@ class ReportGenerator:
     def generate_analysis_html(self, analysis_data: dict, infographic_url: str = None) -> str:
         """Generate HTML for the multi-agent article analysis"""
         template = self._get_analysis_template()
+        
+        # Convert markdown to HTML for all text fields
+        final_summary_html = markdown_to_html(analysis_data.get('final_summary', ''))
+        recon_html = markdown_to_html(analysis_data.get('recon_output', ''))
+        extraction_html = markdown_to_html(analysis_data.get('extraction_output', ''))
+        challenger_html = markdown_to_html(analysis_data.get('challenger_output', ''))
+        synthesis_html = markdown_to_html(analysis_data.get('synthesis_output', ''))
+        
         return template.render(
             title=analysis_data.get('title', 'Article Analysis'),
             url=analysis_data.get('url', ''),
-            recon_output=analysis_data.get('recon_output', ''),
-            extraction_output=analysis_data.get('extraction_output', ''),
-            challenger_output=analysis_data.get('challenger_output', ''),
-            synthesis_output=analysis_data.get('synthesis_output', ''),
-            final_summary=analysis_data.get('final_summary', ''),
+            recon_output=recon_html,
+            extraction_output=extraction_html,
+            challenger_output=challenger_html,
+            synthesis_output=synthesis_html,
+            final_summary=final_summary_html,
             confidence_score=analysis_data.get('confidence_score', 5),
             infographic_url=infographic_url or '',
             generated_date=datetime.now().strftime("%B %d, %Y at %H:%M"),
@@ -730,13 +856,32 @@ class ReportGenerator:
         
         .agent-content.open { display: block; }
         
-        .agent-content pre {
-            white-space: pre-wrap;
-            word-wrap: break-word;
+        .agent-markdown {
             font-family: 'Montserrat', sans-serif;
             font-size: 0.85rem;
             line-height: 1.7;
             color: var(--text);
+        }
+        
+        .agent-markdown h1, .agent-markdown h2, .agent-markdown h3 {
+            margin: 16px 0 10px 0;
+            color: var(--black);
+        }
+        
+        .agent-markdown h2 { font-size: 1.1rem; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+        .agent-markdown h3 { font-size: 1rem; }
+        
+        .agent-markdown p { margin-bottom: 10px; }
+        .agent-markdown ul, .agent-markdown ol { margin: 10px 0; padding-left: 24px; }
+        .agent-markdown li { margin-bottom: 6px; }
+        .agent-markdown strong { color: var(--primary); font-weight: 600; }
+        .agent-markdown hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+        .agent-markdown blockquote {
+            background: var(--bg-light);
+            border-left: 3px solid var(--primary);
+            padding: 10px 16px;
+            margin: 10px 0;
+            font-style: italic;
         }
         
         /* Final Summary Section */
@@ -918,7 +1063,7 @@ class ReportGenerator:
         
         <section class="final-summary">
             <h2>Executive Summary</h2>
-            <div class="summary-content" id="summary-content">{{ final_summary }}</div>
+            <div class="summary-content" id="summary-content">{{ final_summary | safe }}</div>
         </section>
         
         <h3 class="section-title">Agent Analysis Details</h3>
@@ -930,8 +1075,8 @@ class ReportGenerator:
                     <span class="agent-title">Agent 1: Reconnaissance Scanner</span>
                     <span class="agent-toggle">▼</span>
                 </div>
-                <div class="agent-content">
-                    <pre>{{ recon_output }}</pre>
+                <div class="agent-content agent-markdown">
+                    {{ recon_output | safe }}
                 </div>
             </div>
             
@@ -941,8 +1086,8 @@ class ReportGenerator:
                     <span class="agent-title">Agent 2: Extraction Engine</span>
                     <span class="agent-toggle">▼</span>
                 </div>
-                <div class="agent-content">
-                    <pre>{{ extraction_output }}</pre>
+                <div class="agent-content agent-markdown">
+                    {{ extraction_output | safe }}
                 </div>
             </div>
             
@@ -952,8 +1097,8 @@ class ReportGenerator:
                     <span class="agent-title">Agent 3: Type 2 Challenger</span>
                     <span class="agent-toggle">▼</span>
                 </div>
-                <div class="agent-content">
-                    <pre>{{ challenger_output }}</pre>
+                <div class="agent-content agent-markdown">
+                    {{ challenger_output | safe }}
                 </div>
             </div>
             
@@ -963,8 +1108,8 @@ class ReportGenerator:
                     <span class="agent-title">Agent 4: Synthesis Composer</span>
                     <span class="agent-toggle">▼</span>
                 </div>
-                <div class="agent-content">
-                    <pre>{{ synthesis_output }}</pre>
+                <div class="agent-content agent-markdown">
+                    {{ synthesis_output | safe }}
                 </div>
             </div>
         </div>
@@ -977,102 +1122,31 @@ class ReportGenerator:
     </div>
     
     <script>
-        // Attach functions to window for global access - MUST be in global scope
-        (function() {
-            window.toggleAgent = function(header) {
-                if (!header) return;
-                const content = header.nextElementSibling;
-                const toggle = header.querySelector('.agent-toggle');
-                
-                if (content) {
-                    content.classList.toggle('open');
-                }
-                if (toggle) {
-                    toggle.classList.toggle('open');
-                }
-            };
+        // Global functions for interactive elements
+        window.toggleAgent = function(header) {
+            if (!header) return;
+            var content = header.nextElementSibling;
+            var toggle = header.querySelector('.agent-toggle');
             
-            window.downloadInfographic = function() {
-                const img = document.getElementById('infographic-image');
-                if (!img) return;
-                
-                const link = document.createElement('a');
-                link.href = img.src;
-                link.download = 'article_summary_infographic.webp';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            };
-        })();
+            if (content) {
+                content.classList.toggle('open');
+            }
+            if (toggle) {
+                toggle.classList.toggle('open');
+            }
+        };
         
-        // Format markdown in summary - run after DOM is ready
-        (function() {
-            function formatMarkdown() {
-                const summaryContent = document.getElementById('summary-content');
-                if (!summaryContent) return;
-                
-                let text = summaryContent.textContent || summaryContent.innerText || '';
-                
-                // Convert markdown to HTML
-                // Headers
-                text = text.replace(/^### (.+)$/gm, '<h3>$1</h3>');
-                text = text.replace(/^## (.+)$/gm, '<h2>$1</h2>');
-                text = text.replace(/^# (.+)$/gm, '<h1>$1</h1>');
-                
-                // Bold
-                text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-                
-                // Blockquotes
-                text = text.replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>');
-                
-                // Horizontal rules
-                text = text.replace(/^---$/gm, '<hr>');
-                
-                // Lists - numbered
-                text = text.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
-                
-                // Lists - bullet
-                text = text.replace(/^- (.+)$/gm, '<li>$1</li>');
-                
-                // Wrap consecutive list items in ul
-                text = text.replace(/(<li>.*<\/li>\\n?)+/g, function(match) {
-                    return '<ul>' + match + '</ul>';
-                });
-                
-                // Split into paragraphs (double newlines)
-                let paragraphs = text.split(/\\n\\n+/);
-                paragraphs = paragraphs.map(p => {
-                    p = p.trim();
-                    if (!p) return '';
-                    // If it doesn't start with a tag, wrap in p
-                    if (!p.match(/^<[hul]/)) {
-                        return '<p>' + p + '</p>';
-                    }
-                    return p;
-                });
-                
-                text = paragraphs.join('\n');
-                
-                // Clean up
-                text = text.replace(/<p>\s*<\/p>/g, '');
-                text = text.replace(/<p>\s*(<[hul])/g, '$1');
-                text = text.replace(/(<\/[hul]>)\s*<\/p>/g, '$1');
-                
-                // Convert single newlines to breaks within paragraphs
-                text = text.replace(/(<p>.*?)(\\n)(.*?<\/p>)/g, function(match, start, nl, end) {
-                    return start + end.replace(/\\n/g, '<br>');
-                });
-                
-                summaryContent.innerHTML = text;
-            }
+        window.downloadInfographic = function() {
+            var img = document.getElementById('infographic-image');
+            if (!img) return;
             
-            // Run when DOM is ready
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', formatMarkdown);
-            } else {
-                formatMarkdown();
-            }
-        })();
+            var link = document.createElement('a');
+            link.href = img.src;
+            link.download = 'article_summary_infographic.webp';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
     </script>
 </body>
 </html>''')
