@@ -1472,10 +1472,6 @@ async def generate_report_task(
             # Store topic from summary
             topic_title = summary.title if hasattr(summary, 'title') else (title or (content.title if hasattr(content, 'title') else ""))
         
-        # For LinkedIn reports, extract topic after HTML generation
-        if report_type == "linkedin":
-            topic_title = content.title if hasattr(content, 'title') else title or ""
-        
         report_store[report_id] = {
             "status": "completed",
             "result": html,
