@@ -122,7 +122,7 @@ class VeniceImageGenerator:
         }
         
         try:
-            async with httpx.AsyncClient(timeout=60) as client:
+            async with httpx.AsyncClient(timeout=120.0) as client:
                 response = await client.post(
                     f"{self.base_url}/image/generate",
                     headers=self.headers,

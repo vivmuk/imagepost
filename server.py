@@ -624,8 +624,9 @@ async def root():
 
         <div class="result-actions" id="resultSection" style="display: none;">
             <div style="width: 100%; margin-bottom: 20px;">
-                <div style="display: flex; gap: 12px; justify-content: center; margin-bottom: 20px;">
+                <div style="display: flex; gap: 12px; justify-content: center; margin-bottom: 20px; flex-wrap: wrap;">
                     <a href="#" id="downloadBtn" download class="btn-secondary">Download HTML</a>
+                    <a href="#" id="downloadPdfBtn" class="btn-secondary" style="background: #dc2626;">📄 Download PDF</a>
                     <button onclick="resetUI()" class="btn-secondary">Learn Something Else</button>
                 </div>
                 <div id="reportContainer" style="width: 100%; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; background: white;"></div>
@@ -774,13 +775,15 @@ async def root():
             const loadingSection = document.getElementById('loadingSection');
             const resultSection = document.getElementById('resultSection');
             const downloadBtn = document.getElementById('downloadBtn');
+            const downloadPdfBtn = document.getElementById('downloadPdfBtn');
             const reportContainer = document.getElementById('reportContainer');
 
             loadingSection.style.display = 'none';
             resultSection.style.display = 'block';
             
-            // Set download link
+            // Set download links
             downloadBtn.href = url + '/download';
+            downloadPdfBtn.href = url + '/pdf';
             
             // Fetch and display report inline
             try {
@@ -1018,6 +1021,144 @@ async def download_report(report_id: str):
     )
 
 
+@app.get("/api/report/{report_id}/pdf")
+async def download_pdf(report_id: str):
+    """Generate and download the learning report as a beautiful PDF"""
+    if report_id not in report_store:
+        raise HTTPException(status_code=404, detail="Report not found")
+    
+    data = report_store[report_id]
+    
+    if data["status"] != "completed":
+        raise HTTPException(status_code=202, detail="Report not ready yet")
+    
+    try:
+        from weasyprint import HTML, CSS
+        from io import BytesIO
+        
+        # Get the HTML content
+        html_content = data["result"]
+        
+        # Generate PDF with beautiful styling
+        pdf_buffer = BytesIO()
+        HTML(string=html_content).write_pdf(
+            pdf_buffer,
+            stylesheets=[CSS(string="""
+                @page {
+                    size: A4;
+                    margin: 2.5cm 2cm;
+                }
+                body {
+                    font-family: 'Montserrat', 'Lexend', sans-serif;
+                    color: #1f2937;
+                    line-height: 1.8;
+                }
+                h1 {
+                    color: #4f46e5;
+                    page-break-after: avoid;
+                    margin-bottom: 1rem;
+                }
+                h2 {
+                    color: #4f46e5;
+                    page-break-after: avoid;
+                    margin-top: 2rem;
+                    border-bottom: 3px solid #e0e7ff;
+                    padding-bottom: 0.5rem;
+                }
+                .chapter-card {
+                    page-break-inside: avoid;
+                    margin-bottom: 40px;
+                    padding: 20px;
+                    border: 1px solid #e5e7eb;
+                    border-radius: 8px;
+                }
+                .chapter-visual {
+                    max-width: 100%;
+                    height: auto;
+                    page-break-inside: avoid;
+                    margin: 20px 0;
+                    border-radius: 8px;
+                }
+                .preview-box {
+                    background: #f9fafb;
+                    padding: 25px;
+                    border-radius: 8px;
+                    margin-bottom: 30px;
+                    page-break-inside: avoid;
+                }
+                .review-section {
+                    background: #fffbeb;
+                    border: 2px solid #fcd34d;
+                    padding: 25px;
+                    border-radius: 8px;
+                    margin-top: 40px;
+                    page-break-inside: avoid;
+                }
+                .print-btn, .audio-controls, .image-download-btn {
+                    display: none !important;
+                }
+                .image-wrapper {
+                    margin: 20px 0;
+                }
+                p {
+                    margin-bottom: 1rem;
+                }
+                ul, ol {
+                    margin-bottom: 1rem;
+                    padding-left: 25px;
+                }
+                strong {
+                    color: #4f46e5;
+                }
+            """)]
+        )
+        
+        pdf_buffer.seek(0)
+        
+        from fastapi.responses import Response
+        return Response(
+            content=pdf_buffer.getvalue(),
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f"attachment; filename=learning_report_{report_id}.pdf"
+            }
+        )
+        
+    except ImportError:
+        # Fallback: try pdfkit if weasyprint is not available
+        try:
+            import pdfkit
+            from io import BytesIO
+            
+            options = {
+                'page-size': 'A4',
+                'margin-top': '0.75in',
+                'margin-right': '0.75in',
+                'margin-bottom': '0.75in',
+                'margin-left': '0.75in',
+                'encoding': "UTF-8",
+                'no-outline': None
+            }
+            
+            pdf = pdfkit.from_string(data["result"], False, options=options)
+            
+            from fastapi.responses import Response
+            return Response(
+                content=pdf,
+                media_type="application/pdf",
+                headers={
+                    "Content-Disposition": f"attachment; filename=learning_report_{report_id}.pdf"
+                }
+            )
+        except ImportError:
+            raise HTTPException(
+                status_code=500,
+                detail="PDF generation library not installed. Please install weasyprint or pdfkit."
+            )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating PDF: {str(e)}")
+
+
 @app.post("/api/audio/generate")
 async def generate_audio(text: str = Form(...), voice: str = Form("af_sky")):
     """Generate audio from text using Venice TTS API"""
@@ -1167,17 +1308,19 @@ async def generate_learning_task(report_id: str, topic: str, education_level: st
         report_store[report_id]["message"] = "Planning curriculum..."
         
         # Execute LangGraph workflow
-        curriculum = await generate_learning_path(topic, education_level)
+        curriculum, topic_definition = await generate_learning_path(topic, education_level)
         
         report_store[report_id]["message"] = "Compiling lesson..."
         
         generator = ReportGenerator()
-        html = generator.generate_learning_html(topic, curriculum, education_level)
+        html = generator.generate_learning_html(topic, curriculum, education_level, topic_definition)
         
         report_store[report_id] = {
             "status": "completed",
             "result": html,
-            "message": "Lesson Ready!"
+            "message": "Lesson Ready!",
+            "curriculum": curriculum,
+            "topic_definition": topic_definition
         }
         
     except Exception as e:

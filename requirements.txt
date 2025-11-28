@@ -33,3 +33,6 @@ python-multipart>=0.0.9
 langgraph>=0.0.10
 langchain>=0.1.0
 langchain-openai>=0.0.5
+
+# PDF Generation
+weasyprint>=60.0

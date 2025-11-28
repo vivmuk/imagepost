@@ -33,6 +33,7 @@ class LearningState(TypedDict):
     current_chapter_index: int
     final_report: str
     is_complete: bool
+    topic_definition: str  # Definition of the topic for "Big Idea" section
 
 # --- Helper Functions ---
 
@@ -118,6 +119,7 @@ class LearningAgents:
         
         Return ONLY a JSON object with this structure:
         {{
+            "topic_definition": "A clear, concise definition of {topic} appropriate for {education_level} level (2-3 sentences)",
             "chapters": [
                 {{"title": "Chapter 1 Title", "description": "Brief description of what this chapter covers"}},
                 {{"title": "Chapter 2 Title", "description": "..."}},
@@ -166,7 +168,9 @@ class LearningAgents:
             if not chapters:
                 raise ValueError("No chapters found in response")
             
-            return {"curriculum": chapters, "current_chapter_index": 0}
+            topic_definition = data.get("topic_definition", f"{topic} is a fundamental concept that we'll explore in depth through these three chapters.")
+            
+            return {"curriculum": chapters, "current_chapter_index": 0, "topic_definition": topic_definition}
         except Exception as e:
             console.print(f"Planner Error: {e}")
             console.print(f"Response content: {content[:200]}...")
@@ -177,7 +181,8 @@ class LearningAgents:
                     {"title": f"Understanding {topic}", "description": "Core details and mechanics", "content": "", "image_prompt": "", "image_url": "", "review_content": ""},
                     {"title": f"Applying {topic}", "description": "Summary and practical application", "content": "", "image_prompt": "", "image_url": "", "review_content": ""}
                 ],
-                "current_chapter_index": 0
+                "current_chapter_index": 0,
+                "topic_definition": f"{topic} is a fundamental concept that we'll explore in depth through these three chapters."
             }
 
     async def researcher_writer_agent(self, state: LearningState):
@@ -454,10 +459,11 @@ async def generate_learning_path(topic: str, education_level: str = "High School
         curriculum=[],
         current_chapter_index=0,
         final_report="",
-        is_complete=False
+        is_complete=False,
+        topic_definition=""
     )
     
     final_state = await graph.ainvoke(initial_state)
-    return final_state["curriculum"]
+    return final_state["curriculum"], final_state.get("topic_definition", "")
 
 

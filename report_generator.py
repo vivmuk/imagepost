@@ -166,7 +166,7 @@ class ReportGenerator:
             color: var(--text); 
             line-height: 2.0; 
             font-size: 18px; 
-            max-width: 850px; 
+            max-width: 1200px; 
             margin: 0 auto; 
             padding: 40px 20px; 
             background: #fafafa;
@@ -333,8 +333,8 @@ class ReportGenerator:
         <h1>{{ topic }}</h1>
         
         <div class="preview-box">
-            <h2>Preview: The Big Idea</h2>
-            <p class="big-idea">This lesson breaks down <strong>{{ topic }}</strong> into 3 clear chapters to help you master the core concepts quickly.</p>
+            <h2>The Big Idea</h2>
+            <p class="big-idea">{{ topic_definition | default("This lesson breaks down " + topic + " into 3 clear chapters to help you master the core concepts quickly.") }}</p>
         </div>
 
         {% for chapter in chapters %}
@@ -506,12 +506,13 @@ class ReportGenerator:
 </body>
 </html>''')
 
-    def generate_learning_html(self, topic: str, curriculum: list, education_level: str = "High School") -> str:
+    def generate_learning_html(self, topic: str, curriculum: list, education_level: str = "High School", topic_definition: str = None) -> str:
         template = self._get_learning_template()
         return template.render(
             topic=topic,
             chapters=curriculum,
-            education_level=education_level
+            education_level=education_level,
+            topic_definition=topic_definition or f"{topic} is a fundamental concept that we'll explore in depth through these three chapters."
         )
 
     def _get_template(self) -> Template:
