@@ -79,22 +79,22 @@ class SummaryAgents:
         self.api_key = config.venice.api_key
         self.base_url = config.venice.base_url
         
-        # Agent 1 & 2 & 4: Fast summarization model
+        # Agent 1 & 2 & 4: Fast summarization model (10000 token limit per agent)
         self.fast_model = ChatOpenAI(
             api_key=self.api_key,
             base_url=self.base_url,
             model="qwen3-235b",
             temperature=0.3,
-            max_tokens=4000
+            max_tokens=10000
         )
         
-        # Agent 3: Reasoning model for critical thinking
+        # Agent 3: Reasoning model for critical thinking (10000 token limit)
         self.reasoning_model = ChatOpenAI(
             api_key=self.api_key,
             base_url=self.base_url,
             model=config.venice.reasoning_model,
             temperature=0.4,
-            max_tokens=4000
+            max_tokens=10000
         )
     
     async def reconnaissance_scanner(self, state: SummaryState):
@@ -163,7 +163,7 @@ ARTICLE TO SCAN:
     async def extraction_engine(self, state: SummaryState):
         """
         Agent 2: Extraction Engine
-        Deep reading pass to map argument structure and evidence.
+        Deep reading pass to extract KEY POINTS and map argument structure.
         Model: qwen3-235b
         """
         article_text = state["article_text"]
@@ -171,11 +171,28 @@ ARTICLE TO SCAN:
         
         console.print("[bold blue]Agent 2: Extraction Engine[/bold blue] - Deep analysis...")
         
-        system_prompt = """You are an Extraction Engine. Your job is to perform deep analytical reading of an article and map its complete argument structure.
+        system_prompt = """You are an Extraction Engine. Your job is to perform deep analytical reading of an article and extract ALL KEY POINTS before mapping the argument structure.
 
 You will receive an article and the Reconnaissance Scanner's output. Perform a thorough extraction of the following elements:
 
 ## EXTRACTION OUTPUT FORMAT
+
+**ARTICLE KEY POINTS SUMMARY:**
+[First, provide a comprehensive summary of ALL the main points in the article. List every significant fact, finding, claim, and piece of information. This section should allow someone to understand the full content without reading the original article.]
+
+1. [Key Point 1 - most important finding/claim]
+2. [Key Point 2]
+3. [Key Point 3]
+4. [Key Point 4]
+5. [Key Point 5]
+6. [Key Point 6]
+7. [Key Point 7]
+8. [Key Point 8]
+9. [Key Point 9]
+10. [Key Point 10]
+[Continue for ALL significant points in the article - be comprehensive]
+
+---
 
 **Core Claim:**
 [The single central argument in one sentence. This is what you'd text a friend to summarize the piece.]
@@ -217,7 +234,7 @@ You will receive an article and the Reconnaissance Scanner's output. Perform a t
 - [List any appeals to fear, outrage, tribalism, urgency, or other emotional levers]
 - [Note loaded language or framing choices]
 
-Be thorough and objective. Do not include any thinking or reasoning tokens in your output."""
+IMPORTANT: The KEY POINTS SUMMARY section must be comprehensive and capture ALL important information from the article. Be thorough and objective. Do not include any thinking or reasoning tokens in your output."""
         
         user_prompt = f"""RECONNAISSANCE SCAN:
 {recon_output}
@@ -344,9 +361,10 @@ ARTICLE:
         
         system_prompt = """You are a Synthesis Composer. You receive the outputs from three prior agents (Reconnaissance Scanner, Extraction Engine, Type 2 Challenger) and compose a final comprehensive summary.
 
+IMPORTANT: Start with ALL KEY POINTS from the article before providing analysis. The reader should understand the full article content first.
+
 Your summary must be:
-- Concise (readable in under 2 minutes)
-- Comprehensive (captures the full picture)
+- Comprehensive (captures ALL key points from the article)
 - Balanced (acknowledges both strengths and weaknesses)
 - Actionable (reader knows what to think and what to investigate further)
 
@@ -356,6 +374,19 @@ Your summary must be:
 **Title:** [Headline]
 **Source:** [Publication] | **Author:** [Name] | **Date:** [Date]
 **Article Type:** [News/Opinion/Analysis/Advocacy]
+
+---
+
+### 📋 Complete Article Summary
+[Provide a comprehensive summary of ALL the key points from the article. This should be detailed enough that someone can understand the full article without reading the original. Include all significant facts, findings, statistics, and claims.]
+
+**Key Points:**
+1. [Most important finding/claim]
+2. [Second key point]
+3. [Third key point]
+4. [Fourth key point]
+5. [Fifth key point]
+[Continue for all major points - be thorough]
 
 ---
 
@@ -430,33 +461,47 @@ Compose the final synthesis summary."""
         
         console.print("[green]✓ Synthesis complete[/green]")
         
-        # Generate infographic prompt
-        infographic_prompt = f"""Create a whimsical watercolor-style infographic summarizing critical analysis of an article.
+        # Extract key points from extraction output for infographic
+        key_points_section = ""
+        if "KEY POINTS SUMMARY" in extraction_output:
+            # Extract the key points section
+            key_points_match = re.search(r'\*\*ARTICLE KEY POINTS SUMMARY:\*\*(.*?)(?=\*\*Core Claim|\*\*---|\Z)', extraction_output, re.DOTALL)
+            if key_points_match:
+                key_points_section = key_points_match.group(1).strip()
+        
+        # Generate infographic prompt focusing on ARTICLE CONTENT
+        infographic_prompt = f"""Create a comprehensive watercolor-style infographic that SUMMARIZES THE ENTIRE ARTICLE CONTENT.
 
-ARTICLE ANALYZED: {article_title}
-CONFIDENCE SCORE: {confidence_score}/10
+ARTICLE TITLE: {article_title}
 
-The infographic should visualize:
-1. SCOUT (magnifying glass icon): Source credibility, article type, red flags
-2. EXTRACT (pickaxe icon): Core claim, 3 evidence points with quality ratings
-3. CHALLENGE (devil emoji): Bias detection, manipulation flags
-4. SYNTHESIZE (ribbon icon): SCER summary (Source-Claim-Evidence-Reservations)
+PRIMARY FOCUS (80% of the infographic): THE ARTICLE'S KEY POINTS AND CONTENT
+The main purpose of this infographic is to help someone understand the FULL ARTICLE without reading it.
+
+KEY POINTS TO VISUALIZE:
+{key_points_section if key_points_section else extraction_output[:2000]}
+
+SECONDARY FOCUS (20% of the infographic): Small analysis section
+- Confidence Score: {confidence_score}/10
+- Brief note on source credibility
 
 VISUAL STYLE:
 - Soft pastel watercolor washes with hand-drawn aesthetic
-- Organic shapes flowing like a river or garden path
-- Confidence score as a watercolor gauge/thermometer showing {confidence_score}/10
-- Evidence quality as flower blooms (filled=strong, outline=weak)
+- Clear, readable text for each key point
+- Icons or small illustrations for each main concept
+- Organized layout with clear visual hierarchy
+- Main content area with key findings prominently displayed
+- Small corner section for the {confidence_score}/10 confidence rating
 - Muted jewel tones: sage green, dusty rose, soft gold, sky blue, lavender
-- Gentle drop shadows, torn paper edges, paint splatter accents
-- Beautiful journal page aesthetic that makes critical thinking inviting
+- Clean and professional but with artistic watercolor touches
 
-KEY FINDINGS TO INCLUDE:
-- Title: {article_title}
-- Confidence: {confidence_score}/10
-- Core claim from extraction
-- Top red flags or strengths identified
-- SCER summary elements"""
+LAYOUT REQUIREMENTS:
+- Title at the top: "{article_title}"
+- Main body: ALL key points from the article with visual representations
+- Each key point should have a small icon or visual element
+- Use numbered bullets or visual flow to show information hierarchy
+- Bottom corner: Small confidence gauge showing {confidence_score}/10
+
+The infographic should allow a reader to understand the ENTIRE article's content at a glance. The critical analysis is secondary."""
         
         return {
             "synthesis_output": synthesis_output,
