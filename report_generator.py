@@ -514,6 +514,507 @@ class ReportGenerator:
             education_level=education_level,
             topic_definition=topic_definition or f"{topic} is a fundamental concept that we'll explore in depth through these three chapters."
         )
+    
+    def generate_analysis_html(self, analysis_data: dict, infographic_url: str = None) -> str:
+        """Generate HTML for the multi-agent article analysis"""
+        template = self._get_analysis_template()
+        return template.render(
+            title=analysis_data.get('title', 'Article Analysis'),
+            url=analysis_data.get('url', ''),
+            recon_output=analysis_data.get('recon_output', ''),
+            extraction_output=analysis_data.get('extraction_output', ''),
+            challenger_output=analysis_data.get('challenger_output', ''),
+            synthesis_output=analysis_data.get('synthesis_output', ''),
+            final_summary=analysis_data.get('final_summary', ''),
+            confidence_score=analysis_data.get('confidence_score', 5),
+            infographic_url=infographic_url or '',
+            generated_date=datetime.now().strftime("%B %d, %Y at %H:%M"),
+            year=datetime.now().year
+        )
+    
+    def _get_analysis_template(self) -> Template:
+        """Returns the Jinja2 HTML template for multi-agent article analysis"""
+        return Template('''<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} | Critical Analysis</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-light: #e0e7ff;
+            --accent-scout: #059669;
+            --accent-extract: #d97706;
+            --accent-challenge: #dc2626;
+            --accent-synthesis: #7c3aed;
+            --text: #1f2937;
+            --text-light: #6b7280;
+            --bg: #ffffff;
+            --bg-light: #f9fafb;
+            --border: #e5e7eb;
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.8;
+            font-size: 16px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        
+        /* Header */
+        header {
+            text-align: center;
+            padding: 60px 0;
+            border-bottom: 3px solid var(--primary);
+            margin-bottom: 40px;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 16px;
+            line-height: 1.2;
+        }
+        
+        .meta {
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+        
+        .meta a { color: var(--primary); text-decoration: none; }
+        .meta a:hover { text-decoration: underline; }
+        
+        /* Infographic Section */
+        .infographic-section {
+            background: linear-gradient(135deg, #fef3c7 0%, #fce7f3 50%, #e0e7ff 100%);
+            border-radius: 16px;
+            padding: 40px;
+            margin-bottom: 40px;
+            text-align: center;
+        }
+        
+        .infographic-section h2 {
+            font-size: 1.5rem;
+            color: var(--text);
+            margin-bottom: 20px;
+        }
+        
+        .infographic-section img {
+            max-width: 100%;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        
+        /* Confidence Gauge */
+        .confidence-gauge {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            padding: 30px;
+            background: var(--bg-light);
+            border-radius: 12px;
+            margin-bottom: 40px;
+        }
+        
+        .gauge-label {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+        
+        .gauge-bar {
+            width: 300px;
+            height: 24px;
+            background: #e5e7eb;
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .gauge-fill {
+            height: 100%;
+            border-radius: 12px;
+            transition: width 0.5s ease;
+        }
+        
+        .gauge-fill.low { background: linear-gradient(90deg, #dc2626, #f87171); }
+        .gauge-fill.medium { background: linear-gradient(90deg, #d97706, #fbbf24); }
+        .gauge-fill.high { background: linear-gradient(90deg, #059669, #34d399); }
+        
+        .gauge-score {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        
+        /* Agent Sections */
+        .agent-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+        
+        @media (max-width: 900px) {
+            .agent-grid { grid-template-columns: 1fr; }
+        }
+        
+        .agent-card {
+            background: var(--bg);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .agent-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.1);
+        }
+        
+        .agent-header {
+            padding: 20px 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        .agent-header.scout { background: linear-gradient(135deg, #d1fae5, #a7f3d0); border-bottom: 3px solid var(--accent-scout); }
+        .agent-header.extract { background: linear-gradient(135deg, #fef3c7, #fde68a); border-bottom: 3px solid var(--accent-extract); }
+        .agent-header.challenge { background: linear-gradient(135deg, #fee2e2, #fecaca); border-bottom: 3px solid var(--accent-challenge); }
+        .agent-header.synthesis { background: linear-gradient(135deg, #ede9fe, #ddd6fe); border-bottom: 3px solid var(--accent-synthesis); }
+        
+        .agent-icon {
+            font-size: 2rem;
+        }
+        
+        .agent-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            flex: 1;
+        }
+        
+        .agent-toggle {
+            font-size: 1.5rem;
+            color: var(--text-light);
+            transition: transform 0.3s;
+        }
+        
+        .agent-toggle.open { transform: rotate(180deg); }
+        
+        .agent-content {
+            padding: 24px;
+            display: none;
+            background: var(--bg);
+        }
+        
+        .agent-content.open { display: block; }
+        
+        .agent-content pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.9rem;
+            line-height: 1.8;
+            color: var(--text);
+        }
+        
+        /* Final Summary Section */
+        .final-summary {
+            background: var(--bg-light);
+            border: 3px solid var(--primary);
+            border-radius: 16px;
+            padding: 40px;
+            margin-bottom: 40px;
+        }
+        
+        .final-summary h2 {
+            font-size: 1.8rem;
+            color: var(--primary);
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .summary-content {
+            font-size: 1rem;
+            line-height: 2;
+        }
+        
+        .summary-content h3 {
+            font-size: 1.3rem;
+            color: var(--text);
+            margin: 24px 0 12px 0;
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--border);
+        }
+        
+        .summary-content p {
+            margin-bottom: 16px;
+        }
+        
+        .summary-content ul, .summary-content ol {
+            margin: 16px 0;
+            padding-left: 24px;
+        }
+        
+        .summary-content li {
+            margin-bottom: 8px;
+        }
+        
+        .summary-content strong {
+            color: var(--primary);
+        }
+        
+        .summary-content blockquote {
+            background: var(--primary-light);
+            border-left: 4px solid var(--primary);
+            padding: 16px 24px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+            font-style: italic;
+        }
+        
+        .summary-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        
+        .summary-content th, .summary-content td {
+            padding: 12px;
+            border: 1px solid var(--border);
+            text-align: left;
+        }
+        
+        .summary-content th {
+            background: var(--bg-light);
+            font-weight: 600;
+        }
+        
+        /* Download/Print */
+        .print-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 600;
+            cursor: pointer;
+            z-index: 100;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+        }
+        
+        .print-btn:hover {
+            background: #4338ca;
+        }
+        
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 40px 0;
+            border-top: 1px solid var(--border);
+            color: var(--text-light);
+            font-size: 0.85rem;
+        }
+        
+        /* Image download button */
+        .image-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .image-download-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .image-wrapper:hover .image-download-btn {
+            opacity: 1;
+        }
+        
+        @media print {
+            .print-btn { display: none; }
+            .agent-content { display: block !important; }
+            .agent-toggle { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <button class="print-btn" onclick="window.print()">📄 Save as PDF</button>
+    
+    <div class="container">
+        <header>
+            <h1>{{ title }}</h1>
+            <p class="meta">
+                {% if url %}Source: <a href="{{ url }}" target="_blank">{{ url }}</a> | {% endif %}
+                Generated: {{ generated_date }}
+            </p>
+        </header>
+        
+        {% if infographic_url %}
+        <section class="infographic-section">
+            <h2>🎨 Visual Analysis Summary</h2>
+            <div class="image-wrapper">
+                <img src="{{ infographic_url }}" alt="Critical Analysis Infographic" id="infographic-image">
+                <button class="image-download-btn" onclick="downloadInfographic()">⬇ Download</button>
+            </div>
+        </section>
+        {% endif %}
+        
+        <section class="confidence-gauge">
+            <span class="gauge-label">📊 Confidence Rating:</span>
+            <div class="gauge-bar">
+                <div class="gauge-fill {% if confidence_score <= 3 %}low{% elif confidence_score <= 6 %}medium{% else %}high{% endif %}" 
+                     style="width: {{ confidence_score * 10 }}%"></div>
+            </div>
+            <span class="gauge-score">{{ confidence_score }}/10</span>
+        </section>
+        
+        <h2 style="font-size: 1.5rem; margin-bottom: 20px; color: var(--text-light);">🔍 Agent Analysis Pipeline</h2>
+        
+        <div class="agent-grid">
+            <div class="agent-card">
+                <div class="agent-header scout" onclick="toggleAgent(this)">
+                    <span class="agent-icon">🔎</span>
+                    <span class="agent-title">Agent 1: Reconnaissance Scanner</span>
+                    <span class="agent-toggle">▼</span>
+                </div>
+                <div class="agent-content">
+                    <pre>{{ recon_output }}</pre>
+                </div>
+            </div>
+            
+            <div class="agent-card">
+                <div class="agent-header extract" onclick="toggleAgent(this)">
+                    <span class="agent-icon">⛏️</span>
+                    <span class="agent-title">Agent 2: Extraction Engine</span>
+                    <span class="agent-toggle">▼</span>
+                </div>
+                <div class="agent-content">
+                    <pre>{{ extraction_output }}</pre>
+                </div>
+            </div>
+            
+            <div class="agent-card">
+                <div class="agent-header challenge" onclick="toggleAgent(this)">
+                    <span class="agent-icon">😈</span>
+                    <span class="agent-title">Agent 3: Type 2 Challenger</span>
+                    <span class="agent-toggle">▼</span>
+                </div>
+                <div class="agent-content">
+                    <pre>{{ challenger_output }}</pre>
+                </div>
+            </div>
+            
+            <div class="agent-card">
+                <div class="agent-header synthesis" onclick="toggleAgent(this)">
+                    <span class="agent-icon">🎀</span>
+                    <span class="agent-title">Agent 4: Synthesis Composer</span>
+                    <span class="agent-toggle">▼</span>
+                </div>
+                <div class="agent-content">
+                    <pre>{{ synthesis_output }}</pre>
+                </div>
+            </div>
+        </div>
+        
+        <section class="final-summary">
+            <h2>📋 Final Summary</h2>
+            <div class="summary-content">
+                {{ final_summary | safe }}
+            </div>
+        </section>
+        
+        <footer>
+            <p>Multi-Agent Critical Analysis | Generated {{ generated_date }} | © {{ year }}</p>
+            <p style="margin-top: 8px; font-size: 0.75rem;">
+                Venice Models: Scanner (qwen3-235b) → Extractor (qwen3-235b) → Challenger (qwen3-235b-thinking) → Synthesizer (qwen3-235b)
+            </p>
+        </footer>
+    </div>
+    
+    <script>
+        function toggleAgent(header) {
+            const content = header.nextElementSibling;
+            const toggle = header.querySelector('.agent-toggle');
+            
+            content.classList.toggle('open');
+            toggle.classList.toggle('open');
+        }
+        
+        function downloadInfographic() {
+            const img = document.getElementById('infographic-image');
+            if (!img) return;
+            
+            const link = document.createElement('a');
+            link.href = img.src;
+            link.download = 'critical_analysis_infographic.webp';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        
+        // Convert markdown-style formatting to HTML in the final summary
+        document.addEventListener('DOMContentLoaded', function() {
+            const summaryContent = document.querySelector('.summary-content');
+            if (summaryContent) {
+                let html = summaryContent.innerHTML;
+                // Convert ### headers
+                html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+                // Convert ** bold **
+                html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+                // Convert > blockquotes
+                html = html.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>');
+                // Convert - lists
+                html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
+                // Wrap consecutive li in ul
+                html = html.replace(/(<li>.+<\/li>\n?)+/g, '<ul>$&</ul>');
+                // Convert numbered lists
+                html = html.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+                // Convert line breaks to paragraphs (but not inside tags)
+                html = html.replace(/\n\n/g, '</p><p>');
+                // Wrap in paragraph if not already
+                if (!html.startsWith('<')) {
+                    html = '<p>' + html + '</p>';
+                }
+                summaryContent.innerHTML = html;
+            }
+        });
+    </script>
+</body>
+</html>''')
 
     def _get_template(self) -> Template:
         """Return the Jinja2 HTML template"""

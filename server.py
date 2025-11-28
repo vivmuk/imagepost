@@ -1392,16 +1392,16 @@ async def generate_report_task(
     title: str = None,
     report_type: str = "executive"
 ):
-    """Background task to generate the report"""
+    """Background task to generate the report using multi-agent analysis"""
     # Lazy imports to avoid blocking app startup
     from scraper import ContentScraper
-    from summarizer import VeniceSummarizer
+    from summary_agent import analyze_article
     from image_generator import VeniceImageGenerator
     from report_generator import ReportGenerator
+    import base64
     
     try:
         scraper = ContentScraper()
-        summarizer = VeniceSummarizer()
         image_generator = VeniceImageGenerator()
         report_generator = ReportGenerator()
         
@@ -1409,78 +1409,97 @@ async def generate_report_task(
         report_store[report_id]["message"] = "Extracting content..."
         
         content = await scraper.extract(source)
-        if title:
-            content.title = title
+        article_title = title or content.title
+        article_url = source if source.startswith('http') else ""
+        article_text = content.text
             
         html = ""
         
         if report_type == "linkedin":
-            # --- LinkedIn Article Pipeline ---
+            # --- LinkedIn Article Pipeline (using old summarizer for now) ---
+            from summarizer import VeniceSummarizer
+            summarizer = VeniceSummarizer()
             
-            # Stage 2: Generate Article Content
             report_store[report_id]["message"] = "Drafting LinkedIn Article..."
             article_data = await summarizer.generate_linkedin_article_data(content)
             
-            # Stage 3: Generate 1 Focused Visual
             hero_image = None
             if generate_images:
                 report_store[report_id]["message"] = "Creating Viral Visual..."
-                # Use the specific visual concept from the article generation
                 visual_prompt = article_data.get("visual_concept", f"Whimsical watercolor illustration of {content.title}")
                 hero_image = await image_generator.generate_hero_image(
                     content.title,
                     visual_prompt
                 )
             
-            # Stage 4: Generate HTML Page
             report_store[report_id]["message"] = "Compiling Article..."
             html = report_generator.generate_linkedin_html(article_data, hero_image)
-            
-            # Store topic for LinkedIn reports
             topic_title = content.title if hasattr(content, 'title') else title or article_data.get('title', '')
             
         else:
-            # --- Standard Executive Report Pipeline ---
+            # --- Multi-Agent Critical Analysis Pipeline ---
             
-            # Stage 2: Summarize
-            report_store[report_id]["message"] = "Analyzing & Summarizing..."
-            summary = await summarizer.summarize(content)
+            # Agent 1: Reconnaissance Scanner
+            report_store[report_id]["message"] = "🔎 Agent 1: Scanning article..."
             
-            # Stage 3: Generate images
-            images = []
-            hero_image = None
+            # Agent 2: Extraction Engine  
+            # Agent 3: Type 2 Challenger
+            # Agent 4: Synthesis Composer
+            # (All handled in analyze_article function with progress updates)
             
-            if generate_images:
-                report_store[report_id]["message"] = "Generating Visuals..."
-                images = await image_generator.generate_images_for_summary(summary)
-                
-                if generate_hero:
-                    hero_image = await image_generator.generate_hero_image(
-                        summary.title,
-                        summary.executive_summary
-                    )
-            
-            # Stage 4: Generate HTML
-            report_store[report_id]["message"] = "Compiling Report..."
-            html = report_generator.generate_report(
-                summary=summary,
-                images=images,
-                hero_image=hero_image,
-                embed_images=True
+            analysis_data = await analyze_article(
+                article_text=article_text,
+                article_title=article_title,
+                article_url=article_url
             )
             
-            # Store topic from summary
-            topic_title = summary.title if hasattr(summary, 'title') else (title or (content.title if hasattr(content, 'title') else ""))
+            # Update progress for agents
+            report_store[report_id]["message"] = "⛏️ Agent 2: Extracting evidence..."
+            await asyncio.sleep(0.1)  # Allow UI to update
+            
+            report_store[report_id]["message"] = "😈 Agent 3: Critical challenge..."
+            await asyncio.sleep(0.1)
+            
+            report_store[report_id]["message"] = "🎀 Agent 4: Composing synthesis..."
+            await asyncio.sleep(0.1)
+            
+            # Generate infographic
+            infographic_url = ""
+            if generate_images:
+                report_store[report_id]["message"] = "🎨 Generating infographic..."
+                
+                infographic_prompt = analysis_data.get('infographic_prompt', '')
+                if infographic_prompt:
+                    try:
+                        # Generate infographic using the prompt
+                        infographic = await image_generator.generate_image(
+                            prompt=infographic_prompt,
+                            section_title="Critical Analysis Infographic",
+                            style="Watercolor Whimsical"
+                        )
+                        if infographic:
+                            b64 = base64.b64encode(infographic.image_data).decode('utf-8')
+                            infographic_url = f"data:image/webp;base64,{b64}"
+                    except Exception as e:
+                        print(f"Infographic generation failed: {e}")
+                        # Continue without infographic
+            
+            # Generate HTML
+            report_store[report_id]["message"] = "📋 Compiling final report..."
+            html = report_generator.generate_analysis_html(analysis_data, infographic_url)
+            topic_title = article_title
         
         report_store[report_id] = {
             "status": "completed",
             "result": html,
-            "message": "Generation Complete!",
+            "message": "Analysis Complete!",
             "topic": topic_title
         }
         
     except Exception as e:
+        import traceback
         print(f"Error in generation: {e}")
+        print(traceback.format_exc())
         report_store[report_id] = {
             "status": "error",
             "error": str(e),
