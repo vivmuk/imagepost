@@ -1465,9 +1465,12 @@ async def generate_report_task(
                 hero_image=hero_image,
                 embed_images=True
             )
-        
-        # Store topic for filename generation
-        topic_title = title or content.title if hasattr(content, 'title') else summary.title if 'summary' in locals() else ""
+            
+            # Store topic from summary
+            topic_title = summary.title if hasattr(summary, 'title') else (title or (content.title if hasattr(content, 'title') else ""))
+        else:
+            # For LinkedIn reports, use article title
+            topic_title = content.title if hasattr(content, 'title') else title or ""
         
         report_store[report_id] = {
             "status": "completed",
