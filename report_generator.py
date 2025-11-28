@@ -1035,12 +1035,12 @@ class ReportGenerator:
                 text = text.replace(/^- (.+)$/gm, '<li>$1</li>');
                 
                 // Wrap consecutive list items in ul
-                text = text.replace(/(<li>.*<\/li>\n?)+/g, function(match) {
+                text = text.replace(/(<li>.*<\/li>\\n?)+/g, function(match) {
                     return '<ul>' + match + '</ul>';
                 });
                 
                 // Split into paragraphs (double newlines)
-                let paragraphs = text.split(/\n\n+/);
+                let paragraphs = text.split(/\\n\\n+/);
                 paragraphs = paragraphs.map(p => {
                     p = p.trim();
                     if (!p) return '';
@@ -1059,8 +1059,8 @@ class ReportGenerator:
                 text = text.replace(/(<\/[hul]>)\s*<\/p>/g, '$1');
                 
                 // Convert single newlines to breaks within paragraphs
-                text = text.replace(/(<p>.*?)(\n)(.*?<\/p>)/g, function(match, start, nl, end) {
-                    return start + end.replace(/\n/g, '<br>');
+                text = text.replace(/(<p>.*?)(\\n)(.*?<\/p>)/g, function(match, start, nl, end) {
+                    return start + end.replace(/\\n/g, '<br>');
                 });
                 
                 summaryContent.innerHTML = text;
@@ -1626,4 +1626,3 @@ def generate_html_report(
     """Convenience function to generate an HTML report"""
     generator = ReportGenerator()
     return generator.generate_report(summary, images, hero_image, output_path)
-
