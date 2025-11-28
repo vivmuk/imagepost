@@ -1023,7 +1023,7 @@ async def download_report(report_id: str):
 
 @app.get("/api/report/{report_id}/pdf")
 async def download_pdf(report_id: str):
-    """Generate and download the learning report as a beautiful PDF"""
+    """Generate and download the learning report as a beautiful, dyslexia-friendly PDF"""
     if report_id not in report_store:
         raise HTTPException(status_code=404, detail="Report not found")
     
@@ -1033,85 +1033,171 @@ async def download_pdf(report_id: str):
         raise HTTPException(status_code=202, detail="Report not ready yet")
     
     try:
-        from weasyprint import HTML, CSS
+        from xhtml2pdf import pisa
         from io import BytesIO
+        import re
         
         # Get the HTML content
         html_content = data["result"]
         
-        # Generate PDF with beautiful styling
+        # Remove interactive elements and scripts for PDF
+        html_content = re.sub(r'<script.*?</script>', '', html_content, flags=re.DOTALL | re.IGNORECASE)
+        html_content = re.sub(r'<button[^>]*class="[^"]*(print-btn|audio-btn|play-pause-btn|image-download-btn)[^"]*"[^>]*>.*?</button>', '', html_content, flags=re.DOTALL | re.IGNORECASE)
+        html_content = re.sub(r'<div[^>]*class="[^"]*audio-controls[^"]*"[^>]*>.*?</div>', '', html_content, flags=re.DOTALL | re.IGNORECASE)
+        
+        # Add dyslexia-friendly PDF-specific CSS
+        pdf_css = """
+        <style>
+            @page {
+                size: A4;
+                margin: 2.5cm 2cm;
+            }
+            body {
+                font-family: Arial, Helvetica, sans-serif;
+                font-size: 14pt;
+                line-height: 1.8;
+                color: #1f2937;
+                max-width: 100%;
+            }
+            h1 {
+                font-size: 28pt;
+                color: #4f46e5;
+                margin-bottom: 1.5rem;
+                page-break-after: avoid;
+                font-weight: bold;
+            }
+            h2 {
+                font-size: 20pt;
+                color: #4f46e5;
+                margin-top: 2rem;
+                margin-bottom: 1rem;
+                page-break-after: avoid;
+                border-bottom: 3px solid #e0e7ff;
+                padding-bottom: 0.5rem;
+                font-weight: bold;
+            }
+            h3 {
+                font-size: 16pt;
+                color: #4b5563;
+                margin-top: 1.5rem;
+                margin-bottom: 0.75rem;
+                font-weight: bold;
+            }
+            p {
+                margin-bottom: 1.2rem;
+                font-size: 14pt;
+                line-height: 1.8;
+            }
+            .preview-box {
+                background: #f9fafb;
+                padding: 25px;
+                margin-bottom: 30px;
+                page-break-inside: avoid;
+                border-left: 4px solid #4f46e5;
+            }
+            .preview-box h2 {
+                margin-top: 0;
+                border-bottom: none;
+                padding-bottom: 0;
+            }
+            .big-idea {
+                font-size: 15pt;
+                line-height: 1.9;
+                color: #1f2937;
+            }
+            .chapter-card {
+                page-break-inside: avoid;
+                margin-bottom: 40px;
+                padding: 25px;
+                border: 2px solid #e5e7eb;
+                background: #ffffff;
+            }
+            .chapter-num {
+                font-size: 11pt;
+                font-weight: bold;
+                color: #4f46e5;
+                margin-bottom: 0.5rem;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+            }
+            .chapter-visual {
+                max-width: 100%;
+                height: auto;
+                page-break-inside: avoid;
+                margin: 25px 0;
+                display: block;
+            }
+            .chapter-content {
+                font-size: 14pt;
+                line-height: 1.8;
+            }
+            .chapter-content p {
+                margin-bottom: 1.2rem;
+            }
+            .chapter-content h3 {
+                margin-top: 1.5rem;
+                margin-bottom: 0.75rem;
+            }
+            ul, ol {
+                margin-bottom: 1.5rem;
+                padding-left: 30px;
+                line-height: 1.9;
+            }
+            li {
+                margin-bottom: 0.8rem;
+                font-size: 14pt;
+            }
+            strong {
+                color: #4f46e5;
+                font-weight: bold;
+            }
+            .review-section {
+                background: #fffbeb;
+                border: 2px solid #fcd34d;
+                padding: 25px;
+                margin-top: 40px;
+                page-break-inside: avoid;
+            }
+            .review-section h2 {
+                margin-top: 0;
+            }
+            .review-section h3 {
+                color: #92400e;
+                margin-top: 1.5rem;
+            }
+            .review-section ul {
+                color: #78350f;
+            }
+            .print-btn, .audio-controls, .image-download-btn, .audio-player, .image-wrapper button {
+                display: none !important;
+            }
+            .image-wrapper {
+                margin: 25px 0;
+                page-break-inside: avoid;
+            }
+            /* Ensure good spacing and readability */
+            * {
+                page-break-inside: avoid;
+            }
+            .chapter-card, .preview-box, .review-section {
+                page-break-inside: avoid;
+            }
+        </style>
+        """
+        
+        # Insert CSS into HTML
+        html_content = html_content.replace('</head>', pdf_css + '</head>')
+        
+        # Generate PDF
         pdf_buffer = BytesIO()
-        HTML(string=html_content).write_pdf(
-            pdf_buffer,
-            stylesheets=[CSS(string="""
-                @page {
-                    size: A4;
-                    margin: 2.5cm 2cm;
-                }
-                body {
-                    font-family: 'Montserrat', 'Lexend', sans-serif;
-                    color: #1f2937;
-                    line-height: 1.8;
-                }
-                h1 {
-                    color: #4f46e5;
-                    page-break-after: avoid;
-                    margin-bottom: 1rem;
-                }
-                h2 {
-                    color: #4f46e5;
-                    page-break-after: avoid;
-                    margin-top: 2rem;
-                    border-bottom: 3px solid #e0e7ff;
-                    padding-bottom: 0.5rem;
-                }
-                .chapter-card {
-                    page-break-inside: avoid;
-                    margin-bottom: 40px;
-                    padding: 20px;
-                    border: 1px solid #e5e7eb;
-                    border-radius: 8px;
-                }
-                .chapter-visual {
-                    max-width: 100%;
-                    height: auto;
-                    page-break-inside: avoid;
-                    margin: 20px 0;
-                    border-radius: 8px;
-                }
-                .preview-box {
-                    background: #f9fafb;
-                    padding: 25px;
-                    border-radius: 8px;
-                    margin-bottom: 30px;
-                    page-break-inside: avoid;
-                }
-                .review-section {
-                    background: #fffbeb;
-                    border: 2px solid #fcd34d;
-                    padding: 25px;
-                    border-radius: 8px;
-                    margin-top: 40px;
-                    page-break-inside: avoid;
-                }
-                .print-btn, .audio-controls, .image-download-btn {
-                    display: none !important;
-                }
-                .image-wrapper {
-                    margin: 20px 0;
-                }
-                p {
-                    margin-bottom: 1rem;
-                }
-                ul, ol {
-                    margin-bottom: 1rem;
-                    padding-left: 25px;
-                }
-                strong {
-                    color: #4f46e5;
-                }
-            """)]
+        result = pisa.CreatePDF(
+            src=BytesIO(html_content.encode('utf-8')),
+            dest=pdf_buffer,
+            encoding='utf-8'
         )
+        
+        if result.err:
+            raise Exception(f"PDF generation error: {result.err}")
         
         pdf_buffer.seek(0)
         
@@ -1125,38 +1211,14 @@ async def download_pdf(report_id: str):
         )
         
     except ImportError:
-        # Fallback: try pdfkit if weasyprint is not available
-        try:
-            import pdfkit
-            from io import BytesIO
-            
-            options = {
-                'page-size': 'A4',
-                'margin-top': '0.75in',
-                'margin-right': '0.75in',
-                'margin-bottom': '0.75in',
-                'margin-left': '0.75in',
-                'encoding': "UTF-8",
-                'no-outline': None
-            }
-            
-            pdf = pdfkit.from_string(data["result"], False, options=options)
-            
-            from fastapi.responses import Response
-            return Response(
-                content=pdf,
-                media_type="application/pdf",
-                headers={
-                    "Content-Disposition": f"attachment; filename=learning_report_{report_id}.pdf"
-                }
-            )
-        except ImportError:
-            raise HTTPException(
-                status_code=500,
-                detail="PDF generation library not installed. Please install weasyprint or pdfkit."
-            )
+        raise HTTPException(
+            status_code=500,
+            detail="PDF generation library (xhtml2pdf) not installed. Please install xhtml2pdf."
+        )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error generating PDF: {str(e)}")
+        import traceback
+        error_details = traceback.format_exc()
+        raise HTTPException(status_code=500, detail=f"Error generating PDF: {str(e)}\n\n{error_details}")
 
 
 @app.post("/api/audio/generate")
