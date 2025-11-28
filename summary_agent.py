@@ -569,35 +569,42 @@ async def analyze_article(article_text: str, article_title: str = "", article_ur
     # We'll manually invoke each step to send progress updates
     agents = SummaryAgents()
     
+    # Start with initial state
+    state = dict(initial_state)
+    
     # Agent 1
     if progress_callback:
         await progress_callback("🔎 Agent 1: Scanning article...")
-    state = await agents.reconnaissance_scanner(initial_state)
+    recon_result = await agents.reconnaissance_scanner(state)
+    state.update(recon_result)  # Merge updates into state
     
     # Agent 2
     if progress_callback:
         await progress_callback("⛏️ Agent 2: Extracting key points and evidence...")
-    state = await agents.extraction_engine(state)
+    extraction_result = await agents.extraction_engine(state)
+    state.update(extraction_result)  # Merge updates into state
     
     # Agent 3
     if progress_callback:
         await progress_callback("😈 Agent 3: Critical challenge and bias detection...")
-    state = await agents.type2_challenger(state)
+    challenger_result = await agents.type2_challenger(state)
+    state.update(challenger_result)  # Merge updates into state
     
     # Agent 4
     if progress_callback:
         await progress_callback("🎀 Agent 4: Composing final synthesis...")
-    state = await agents.synthesis_composer(state)
+    synthesis_result = await agents.synthesis_composer(state)
+    state.update(synthesis_result)  # Merge updates into state
     
     return {
         "title": article_title,
         "url": article_url,
-        "recon_output": state["recon_output"],
-        "extraction_output": state["extraction_output"],
-        "challenger_output": state["challenger_output"],
-        "synthesis_output": state["synthesis_output"],
-        "final_summary": state["final_summary"],
-        "confidence_score": state["confidence_score"],
-        "infographic_prompt": state["infographic_prompt"]
+        "recon_output": state.get("recon_output", ""),
+        "extraction_output": state.get("extraction_output", ""),
+        "challenger_output": state.get("challenger_output", ""),
+        "synthesis_output": state.get("synthesis_output", ""),
+        "final_summary": state.get("final_summary", ""),
+        "confidence_score": state.get("confidence_score", 5),
+        "infographic_prompt": state.get("infographic_prompt", "")
     }
 
