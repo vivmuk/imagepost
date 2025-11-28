@@ -1002,6 +1002,22 @@ async def get_report(report_id: str):
     return HTMLResponse(content=data["result"])
 
 
+def sanitize_filename(text: str, max_length: int = 50) -> str:
+    """Sanitize text for use in filenames"""
+    import re
+    # Remove HTML tags
+    text = re.sub(r'<[^>]+>', '', text)
+    # Replace spaces and special characters with underscores
+    text = re.sub(r'[^\w\s-]', '', text)
+    text = re.sub(r'[-\s]+', '_', text)
+    # Remove leading/trailing underscores
+    text = text.strip('_')
+    # Limit length
+    if len(text) > max_length:
+        text = text[:max_length].rstrip('_')
+    return text or "report"
+
+
 @app.get("/api/report/{report_id}/download")
 async def download_report(report_id: str):
     """Download the report as an HTML file"""
@@ -1013,10 +1029,27 @@ async def download_report(report_id: str):
     if data["status"] != "completed":
         raise HTTPException(status_code=202, detail="Report not ready yet")
     
+    # Extract topic name for filename
+    topic = data.get("topic", "")
+    if not topic:
+        # Try to extract from HTML
+        import re
+        html_content = data["result"]
+        topic_match = re.search(r'<h1[^>]*>(.*?)</h1>', html_content, re.DOTALL)
+        if topic_match:
+            topic = re.sub(r'<[^>]+>', '', topic_match.group(1)).strip()
+    
+    # Create filename with topic
+    if topic:
+        safe_topic = sanitize_filename(topic)
+        filename = f"{safe_topic}_{report_id}.html"
+    else:
+        filename = f"report_{report_id}.html"
+    
     return HTMLResponse(
         content=data["result"],
         headers={
-            "Content-Disposition": f"attachment; filename=report_{report_id}.html"
+            "Content-Disposition": f"attachment; filename={filename}"
         }
     )
 
@@ -1284,12 +1317,16 @@ async def download_pdf(report_id: str):
         doc.build(story)
         pdf_buffer.seek(0)
         
+        # Create filename with topic
+        safe_topic = sanitize_filename(topic)
+        filename = f"{safe_topic}_{report_id}.pdf"
+        
         from fastapi.responses import Response
         return Response(
             content=pdf_buffer.getvalue(),
             media_type="application/pdf",
             headers={
-                "Content-Disposition": f"attachment; filename=learning_report_{report_id}.pdf"
+                "Content-Disposition": f"attachment; filename={filename}"
             }
         )
         
@@ -1429,10 +1466,14 @@ async def generate_report_task(
                 embed_images=True
             )
         
+        # Store topic for filename generation
+        topic_title = title or content.title if hasattr(content, 'title') else summary.title if 'summary' in locals() else ""
+        
         report_store[report_id] = {
             "status": "completed",
             "result": html,
-            "message": "Generation Complete!"
+            "message": "Generation Complete!",
+            "topic": topic_title
         }
         
     except Exception as e:
