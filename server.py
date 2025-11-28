@@ -1436,6 +1436,9 @@ async def generate_report_task(
             report_store[report_id]["message"] = "Compiling Article..."
             html = report_generator.generate_linkedin_html(article_data, hero_image)
             
+            # Store topic for LinkedIn reports
+            topic_title = content.title if hasattr(content, 'title') else title or article_data.get('title', '')
+            
         else:
             # --- Standard Executive Report Pipeline ---
             
@@ -1468,8 +1471,9 @@ async def generate_report_task(
             
             # Store topic from summary
             topic_title = summary.title if hasattr(summary, 'title') else (title or (content.title if hasattr(content, 'title') else ""))
-        else:
-            # For LinkedIn reports, use article title
+        
+        # For LinkedIn reports, extract topic after HTML generation
+        if report_type == "linkedin":
             topic_title = content.title if hasattr(content, 'title') else title or ""
         
         report_store[report_id] = {
