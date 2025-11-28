@@ -1033,172 +1033,255 @@ async def download_pdf(report_id: str):
         raise HTTPException(status_code=202, detail="Report not ready yet")
     
     try:
-        from xhtml2pdf import pisa
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.units import cm
+        from reportlab.lib.colors import HexColor
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak, Image, Table, TableStyle
+        from reportlab.lib.enums import TA_LEFT, TA_CENTER
+        from reportlab.pdfbase import pdfmetrics
+        from reportlab.pdfbase.ttfonts import TTFont
         from io import BytesIO
+        import base64
         import re
+        from html import unescape
         
-        # Get the HTML content
-        html_content = data["result"]
+        # Get curriculum data if available, otherwise parse HTML
+        curriculum = data.get("curriculum", [])
+        topic = data.get("topic", "Learning Report")
+        topic_definition = data.get("topic_definition", "")
         
-        # Remove interactive elements and scripts for PDF
-        html_content = re.sub(r'<script.*?</script>', '', html_content, flags=re.DOTALL | re.IGNORECASE)
-        html_content = re.sub(r'<button[^>]*class="[^"]*(print-btn|audio-btn|play-pause-btn|image-download-btn)[^"]*"[^>]*>.*?</button>', '', html_content, flags=re.DOTALL | re.IGNORECASE)
-        html_content = re.sub(r'<div[^>]*class="[^"]*audio-controls[^"]*"[^>]*>.*?</div>', '', html_content, flags=re.DOTALL | re.IGNORECASE)
+        # If we don't have structured data, try to extract from HTML
+        if not curriculum:
+            html_content = data["result"]
+            # Try to extract topic from HTML
+            topic_match = re.search(r'<h1[^>]*>(.*?)</h1>', html_content, re.DOTALL)
+            if topic_match:
+                topic = re.sub(r'<[^>]+>', '', topic_match.group(1)).strip()
+            
+            # Try to extract chapters from HTML
+            chapter_matches = re.finditer(
+                r'<div[^>]*class="[^"]*chapter-card[^"]*"[^>]*>.*?<h2[^>]*>(.*?)</h2>.*?<div[^>]*class="[^"]*chapter-content[^"]*"[^>]*>(.*?)</div>',
+                html_content,
+                re.DOTALL
+            )
+            for match in chapter_matches:
+                chapter_title = re.sub(r'<[^>]+>', '', match.group(1)).strip()
+                chapter_content = match.group(2)
+                curriculum.append({
+                    'title': chapter_title,
+                    'content': chapter_content,
+                    'image_url': ''
+                })
+            
+            # Try to extract big idea
+            big_idea_match = re.search(r'<p[^>]*class="[^"]*big-idea[^"]*"[^>]*>(.*?)</p>', html_content, re.DOTALL)
+            if big_idea_match and not topic_definition:
+                topic_definition = re.sub(r'<[^>]+>', '', big_idea_match.group(1)).strip()
         
-        # Add dyslexia-friendly PDF-specific CSS
-        pdf_css = """
-        <style>
-            @page {
-                size: A4;
-                margin: 2.5cm 2cm;
-            }
-            body {
-                font-family: Arial, Helvetica, sans-serif;
-                font-size: 14pt;
-                line-height: 1.8;
-                color: #1f2937;
-                max-width: 100%;
-            }
-            h1 {
-                font-size: 28pt;
-                color: #4f46e5;
-                margin-bottom: 1.5rem;
-                page-break-after: avoid;
-                font-weight: bold;
-            }
-            h2 {
-                font-size: 20pt;
-                color: #4f46e5;
-                margin-top: 2rem;
-                margin-bottom: 1rem;
-                page-break-after: avoid;
-                border-bottom: 3px solid #e0e7ff;
-                padding-bottom: 0.5rem;
-                font-weight: bold;
-            }
-            h3 {
-                font-size: 16pt;
-                color: #4b5563;
-                margin-top: 1.5rem;
-                margin-bottom: 0.75rem;
-                font-weight: bold;
-            }
-            p {
-                margin-bottom: 1.2rem;
-                font-size: 14pt;
-                line-height: 1.8;
-            }
-            .preview-box {
-                background: #f9fafb;
-                padding: 25px;
-                margin-bottom: 30px;
-                page-break-inside: avoid;
-                border-left: 4px solid #4f46e5;
-            }
-            .preview-box h2 {
-                margin-top: 0;
-                border-bottom: none;
-                padding-bottom: 0;
-            }
-            .big-idea {
-                font-size: 15pt;
-                line-height: 1.9;
-                color: #1f2937;
-            }
-            .chapter-card {
-                page-break-inside: avoid;
-                margin-bottom: 40px;
-                padding: 25px;
-                border: 2px solid #e5e7eb;
-                background: #ffffff;
-            }
-            .chapter-num {
-                font-size: 11pt;
-                font-weight: bold;
-                color: #4f46e5;
-                margin-bottom: 0.5rem;
-                text-transform: uppercase;
-                letter-spacing: 1px;
-            }
-            .chapter-visual {
-                max-width: 100%;
-                height: auto;
-                page-break-inside: avoid;
-                margin: 25px 0;
-                display: block;
-            }
-            .chapter-content {
-                font-size: 14pt;
-                line-height: 1.8;
-            }
-            .chapter-content p {
-                margin-bottom: 1.2rem;
-            }
-            .chapter-content h3 {
-                margin-top: 1.5rem;
-                margin-bottom: 0.75rem;
-            }
-            ul, ol {
-                margin-bottom: 1.5rem;
-                padding-left: 30px;
-                line-height: 1.9;
-            }
-            li {
-                margin-bottom: 0.8rem;
-                font-size: 14pt;
-            }
-            strong {
-                color: #4f46e5;
-                font-weight: bold;
-            }
-            .review-section {
-                background: #fffbeb;
-                border: 2px solid #fcd34d;
-                padding: 25px;
-                margin-top: 40px;
-                page-break-inside: avoid;
-            }
-            .review-section h2 {
-                margin-top: 0;
-            }
-            .review-section h3 {
-                color: #92400e;
-                margin-top: 1.5rem;
-            }
-            .review-section ul {
-                color: #78350f;
-            }
-            .print-btn, .audio-controls, .image-download-btn, .audio-player, .image-wrapper button {
-                display: none !important;
-            }
-            .image-wrapper {
-                margin: 25px 0;
-                page-break-inside: avoid;
-            }
-            /* Ensure good spacing and readability */
-            * {
-                page-break-inside: avoid;
-            }
-            .chapter-card, .preview-box, .review-section {
-                page-break-inside: avoid;
-            }
-        </style>
-        """
-        
-        # Insert CSS into HTML
-        html_content = html_content.replace('</head>', pdf_css + '</head>')
-        
-        # Generate PDF
+        # Create PDF buffer
         pdf_buffer = BytesIO()
-        result = pisa.CreatePDF(
-            src=BytesIO(html_content.encode('utf-8')),
-            dest=pdf_buffer,
-            encoding='utf-8'
+        doc = SimpleDocTemplate(
+            pdf_buffer,
+            pagesize=A4,
+            rightMargin=2*cm,
+            leftMargin=2*cm,
+            topMargin=2.5*cm,
+            bottomMargin=2.5*cm
         )
         
-        if result.err:
-            raise Exception(f"PDF generation error: {result.err}")
+        # Build story (content)
+        story = []
         
+        # Define dyslexia-friendly styles
+        styles = getSampleStyleSheet()
+        
+        # Title style
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=28,
+            textColor=HexColor('#4f46e5'),
+            spaceAfter=30,
+            fontName='Helvetica-Bold',
+            alignment=TA_LEFT
+        )
+        
+        # Heading style
+        heading_style = ParagraphStyle(
+            'CustomHeading',
+            parent=styles['Heading2'],
+            fontSize=20,
+            textColor=HexColor('#4f46e5'),
+            spaceAfter=15,
+            spaceBefore=30,
+            fontName='Helvetica-Bold',
+            borderWidth=0,
+            borderPadding=0,
+            borderColor=HexColor('#e0e7ff'),
+            borderPaddingBottom=5
+        )
+        
+        # Subheading style
+        subheading_style = ParagraphStyle(
+            'CustomSubheading',
+            parent=styles['Heading3'],
+            fontSize=16,
+            textColor=HexColor('#4b5563'),
+            spaceAfter=12,
+            spaceBefore=20,
+            fontName='Helvetica-Bold'
+        )
+        
+        # Body text style (dyslexia-friendly: larger font, more spacing)
+        body_style = ParagraphStyle(
+            'CustomBody',
+            parent=styles['Normal'],
+            fontSize=14,
+            leading=25,  # Line spacing (1.8x font size)
+            textColor=HexColor('#1f2937'),
+            spaceAfter=18,
+            fontName='Helvetica',
+            alignment=TA_LEFT
+        )
+        
+        # Big idea style
+        big_idea_style = ParagraphStyle(
+            'BigIdea',
+            parent=body_style,
+            fontSize=15,
+            leading=27,
+            spaceAfter=25,
+            leftIndent=0,
+            rightIndent=0
+        )
+        
+        # Chapter number style
+        chapter_num_style = ParagraphStyle(
+            'ChapterNum',
+            parent=styles['Normal'],
+            fontSize=11,
+            textColor=HexColor('#4f46e5'),
+            fontName='Helvetica-Bold',
+            spaceAfter=8
+        )
+        
+        # Add title
+        story.append(Paragraph(unescape(topic), title_style))
+        story.append(Spacer(1, 20))
+        
+        # Add Big Idea section
+        if topic_definition:
+            story.append(Paragraph("<b>The Big Idea</b>", heading_style))
+            story.append(Spacer(1, 10))
+            # Add background box effect with table
+            big_idea_table = Table(
+                [[Paragraph(unescape(topic_definition), big_idea_style)]],
+                colWidths=[doc.width],
+                style=TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, -1), HexColor('#f9fafb')),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 25),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 25),
+                    ('TOPPADDING', (0, 0), (-1, -1), 20),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 20),
+                    ('LEFTPADDING', (0, 0), (0, 0), 25),
+                    ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ])
+            )
+            story.append(big_idea_table)
+            story.append(Spacer(1, 30))
+        
+        # Add chapters
+        if curriculum:
+            for idx, chapter in enumerate(curriculum, 1):
+                # Chapter number
+                story.append(Paragraph(
+                    f"CHAPTER {idx} OF {len(curriculum)}",
+                    chapter_num_style
+                ))
+                
+                # Chapter title
+                story.append(Paragraph(unescape(chapter.get('title', 'Chapter')), heading_style))
+                story.append(Spacer(1, 15))
+                
+                # Chapter image
+                if chapter.get('image_url'):
+                    try:
+                        # Extract base64 image
+                        img_data = chapter['image_url']
+                        if img_data.startswith('data:image'):
+                            # Extract base64 part
+                            base64_data = img_data.split(',')[1]
+                            img_bytes = base64.b64decode(base64_data)
+                            
+                            # Create image from bytes
+                            img_buffer = BytesIO(img_bytes)
+                            img = Image(img_buffer, width=15*cm, height=8.5*cm)  # 16:9 aspect ratio
+                            story.append(img)
+                            story.append(Spacer(1, 20))
+                    except Exception as e:
+                        print(f"Error adding image: {e}")
+                        # Continue without image
+                
+                # Chapter content
+                content = chapter.get('content', '')
+                if content:
+                    # Strip HTML tags but preserve structure, convert to plain text with line breaks
+                    # Simple HTML to text conversion
+                    content = re.sub(r'<h[1-6][^>]*>', '<b>', content)
+                    content = re.sub(r'</h[1-6]>', '</b><br/>', content)
+                    content = re.sub(r'<p[^>]*>', '', content)
+                    content = re.sub(r'</p>', '<br/><br/>', content)
+                    content = re.sub(r'<br\s*/?>', '<br/>', content)
+                    content = re.sub(r'<strong[^>]*>', '<b>', content)
+                    content = re.sub(r'</strong>', '</b>', content)
+                    content = re.sub(r'<em[^>]*>', '<i>', content)
+                    content = re.sub(r'</em>', '</i>', content)
+                    content = re.sub(r'<ul[^>]*>', '', content)
+                    content = re.sub(r'</ul>', '', content)
+                    content = re.sub(r'<ol[^>]*>', '', content)
+                    content = re.sub(r'</ol>', '', content)
+                    content = re.sub(r'<li[^>]*>', '• ', content)
+                    content = re.sub(r'</li>', '<br/>', content)
+                    content = re.sub(r'<[^>]+>', '', content)  # Remove remaining tags
+                    content = unescape(content)
+                    
+                    # Split into paragraphs and add
+                    paragraphs = content.split('<br/><br/>')
+                    for para in paragraphs:
+                        para = para.strip()
+                        if para:
+                            # Replace <br/> with line breaks
+                            para = para.replace('<br/>', '<br/>')
+                            story.append(Paragraph(para, body_style))
+                            story.append(Spacer(1, 12))
+                
+                # Add spacing between chapters
+                if idx < len(curriculum):
+                    story.append(PageBreak())
+        
+        # Add Smart Review section if available
+        if curriculum and curriculum[0].get('review_content'):
+            story.append(PageBreak())
+            story.append(Paragraph("Smart Review: Key Takeaways", heading_style))
+            story.append(Spacer(1, 15))
+            
+            review_table = Table(
+                [[Paragraph(unescape(curriculum[0]['review_content']), body_style)]],
+                colWidths=[doc.width],
+                style=TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, -1), HexColor('#fffbeb')),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 25),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 25),
+                    ('TOPPADDING', (0, 0), (-1, -1), 20),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 20),
+                    ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ])
+            )
+            story.append(review_table)
+        
+        # Build PDF
+        doc.build(story)
         pdf_buffer.seek(0)
         
         from fastapi.responses import Response
@@ -1213,7 +1296,7 @@ async def download_pdf(report_id: str):
     except ImportError:
         raise HTTPException(
             status_code=500,
-            detail="PDF generation library (xhtml2pdf) not installed. Please install xhtml2pdf."
+            detail="PDF generation library (reportlab) not installed. Please install reportlab."
         )
     except Exception as e:
         import traceback
@@ -1382,7 +1465,8 @@ async def generate_learning_task(report_id: str, topic: str, education_level: st
             "result": html,
             "message": "Lesson Ready!",
             "curriculum": curriculum,
-            "topic_definition": topic_definition
+            "topic_definition": topic_definition,
+            "topic": topic
         }
         
     except Exception as e:

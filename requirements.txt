@@ -35,4 +35,5 @@ langchain>=0.1.0
 langchain-openai>=0.0.5
 
 # PDF Generation (pure Python, no system dependencies)
-xhtml2pdf>=0.2.15
+reportlab>=4.0.0
+Pillow>=10.0.0
