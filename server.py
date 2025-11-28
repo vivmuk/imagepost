@@ -111,7 +111,7 @@ async def root():
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Venice Summary | Executive Intelligence</title>
+    <title>Vivek's Agentic Summarizer</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
@@ -485,7 +485,7 @@ async def root():
 
     <div class="container">
         <header>
-            <h1>Venice <span>Summary</span></h1>
+            <h1>Vivek's <span>Agentic Summarizer</span></h1>
             <div class="subtitle">Advanced AI Executive Reporting & Visual Synthesis</div>
         </header>
 
@@ -609,6 +609,7 @@ async def root():
         <div class="loading-container" id="loadingSection">
             <div class="artistic-loader"></div>
             <div class="loading-text" id="statusMessage">Initializing AI Agents...</div>
+            <div style="margin-top: 20px; font-size: 0.9rem; color: #6b7280;" id="timeElapsed">0s</div>
             
             <div class="progress-bar">
                 <div class="progress-fill" id="progressFill"></div>
@@ -724,6 +725,7 @@ async def root():
         async function pollStatus(reportId) {
             const statusMsg = document.getElementById('statusMessage');
             const progressFill = document.getElementById('progressFill');
+            const timeElapsed = document.getElementById('timeElapsed');
             const steps = [
                 document.getElementById('step1'),
                 document.getElementById('step2'),
@@ -731,6 +733,8 @@ async def root():
                 document.getElementById('step4')
             ];
 
+            const startTime = Date.now();
+            
             const interval = setInterval(async () => {
                 try {
                     const res = await fetch(`/api/status/${reportId}`);
@@ -738,28 +742,60 @@ async def root():
                     
                     const data = await res.json();
                     
+                    // Update time elapsed
+                    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                    const minutes = Math.floor(elapsed / 60);
+                    const seconds = elapsed % 60;
+                    if (timeElapsed) {
+                        timeElapsed.textContent = `${minutes}m ${seconds}s`;
+                    }
+                    
                     // Update UI based on message
                     statusMsg.textContent = data.message;
                     
-                    // Progress logic
-                    if (data.message.includes("Extracting") || data.message.includes("Planning")) {
-                        progressFill.style.width = '25%';
+                    // Progress logic for multi-agent analysis
+                    if (data.message.includes("Extracting") || data.message.includes("Agent 1") || data.message.includes("Scanning")) {
+                        progressFill.style.width = '20%';
                         steps[0].classList.add('active');
-                    } else if (data.message.includes("Summarizing") || data.message.includes("Researching") || data.message.includes("Writing")) {
-                        progressFill.style.width = '50%';
+                    } else if (data.message.includes("Agent 2") || data.message.includes("Extracting") || data.message.includes("evidence")) {
+                        progressFill.style.width = '40%';
                         steps[1].classList.add('active');
-                    } else if (data.message.includes("Visual") || data.message.includes("Designing")) {
+                    } else if (data.message.includes("Agent 3") || data.message.includes("Challenge") || data.message.includes("bias")) {
+                        progressFill.style.width = '60%';
+                        steps[2].classList.add('active');
+                    } else if (data.message.includes("Agent 4") || data.message.includes("Synthesis") || data.message.includes("Composing")) {
                         progressFill.style.width = '75%';
                         steps[2].classList.add('active');
-                    } else if (data.message.includes("Compiling") || data.message.includes("Report")) {
-                        progressFill.style.width = '90%';
+                    } else if (data.message.includes("infographic") || data.message.includes("Generating")) {
+                        progressFill.style.width = '85%';
                         steps[3].classList.add('active');
+                    } else if (data.message.includes("Compiling") || data.message.includes("Report") || data.message.includes("final")) {
+                        progressFill.style.width = '95%';
+                        steps[3].classList.add('active');
+                    } else if (data.message.includes("Planning") || data.message.includes("Summarizing") || data.message.includes("Researching") || data.message.includes("Writing")) {
+                        // Fallback for other report types
+                        if (data.message.includes("Planning")) {
+                            progressFill.style.width = '25%';
+                            steps[0].classList.add('active');
+                        } else if (data.message.includes("Researching") || data.message.includes("Writing")) {
+                            progressFill.style.width = '50%';
+                            steps[1].classList.add('active');
+                        } else if (data.message.includes("Visual") || data.message.includes("Designing")) {
+                            progressFill.style.width = '75%';
+                            steps[2].classList.add('active');
+                        }
                     }
 
                     if (data.status === 'completed') {
                         clearInterval(interval);
                         progressFill.style.width = '100%';
                         steps.forEach(s => s.classList.add('active'));
+                        if (timeElapsed) {
+                            const finalElapsed = Math.floor((Date.now() - startTime) / 1000);
+                            const finalMinutes = Math.floor(finalElapsed / 60);
+                            const finalSeconds = finalElapsed % 60;
+                            timeElapsed.textContent = `Complete in ${finalMinutes}m ${finalSeconds}s`;
+                        }
                         showResult(data.report_url);
                     } else if (data.status === 'error') {
                         clearInterval(interval);
@@ -768,7 +804,7 @@ async def root():
                 } catch (e) {
                     console.error(e);
                 }
-            }, 2000);
+            }, 1500);
         }
 
         async function showResult(url) {
@@ -1079,38 +1115,32 @@ async def download_pdf(report_id: str):
         import re
         from html import unescape
         
-        # Get curriculum data if available, otherwise parse HTML
-        curriculum = data.get("curriculum", [])
-        topic = data.get("topic", "Learning Report")
-        topic_definition = data.get("topic_definition", "")
+        # Check if this is an analysis report or learning report
+        html_content = data["result"]
+        is_analysis_report = "Agent Analysis Pipeline" in html_content or "Executive Summary" in html_content
         
-        # If we don't have structured data, try to extract from HTML
-        if not curriculum:
-            html_content = data["result"]
-            # Try to extract topic from HTML
-            topic_match = re.search(r'<h1[^>]*>(.*?)</h1>', html_content, re.DOTALL)
-            if topic_match:
-                topic = re.sub(r'<[^>]+>', '', topic_match.group(1)).strip()
+        # Extract topic from HTML
+        topic = data.get("topic", "Report")
+        topic_match = re.search(r'<h1[^>]*>(.*?)</h1>', html_content, re.DOTALL)
+        if topic_match:
+            topic = re.sub(r'<[^>]+>', '', topic_match.group(1)).strip()
+        
+        if is_analysis_report:
+            # This is an analysis report - extract summary content
+            summary_match = re.search(r'<div[^>]*id="summary-content"[^>]*>(.*?)</div>', html_content, re.DOTALL)
+            summary_text = ""
+            if summary_match:
+                summary_text = re.sub(r'<[^>]+>', '', summary_match.group(1))
             
-            # Try to extract chapters from HTML
-            chapter_matches = re.finditer(
-                r'<div[^>]*class="[^"]*chapter-card[^"]*"[^>]*>.*?<h2[^>]*>(.*?)</h2>.*?<div[^>]*class="[^"]*chapter-content[^"]*"[^>]*>(.*?)</div>',
-                html_content,
-                re.DOTALL
-            )
-            for match in chapter_matches:
-                chapter_title = re.sub(r'<[^>]+>', '', match.group(1)).strip()
-                chapter_content = match.group(2)
-                curriculum.append({
-                    'title': chapter_title,
-                    'content': chapter_content,
-                    'image_url': ''
-                })
+            # Extract confidence score
+            confidence_match = re.search(r'<span[^>]*class="gauge-score"[^>]*>(\d+)/10</span>', html_content)
+            confidence_score = 5
+            if confidence_match:
+                confidence_score = int(confidence_match.group(1))
             
-            # Try to extract big idea
-            big_idea_match = re.search(r'<p[^>]*class="[^"]*big-idea[^"]*"[^>]*>(.*?)</p>', html_content, re.DOTALL)
-            if big_idea_match and not topic_definition:
-                topic_definition = re.sub(r'<[^>]+>', '', big_idea_match.group(1)).strip()
+            # Extract infographic if present
+            infographic_match = re.search(r'<img[^>]*id="infographic-image"[^>]*src="([^"]*)"', html_content)
+            infographic_url = infographic_match.group(1) if infographic_match else None
         
         # Create PDF buffer
         pdf_buffer = BytesIO()
@@ -1126,16 +1156,16 @@ async def download_pdf(report_id: str):
         # Build story (content)
         story = []
         
-        # Define dyslexia-friendly styles
+        # Define professional consultant styles (red/black theme)
         styles = getSampleStyleSheet()
         
         # Title style
         title_style = ParagraphStyle(
             'CustomTitle',
             parent=styles['Heading1'],
-            fontSize=28,
-            textColor=HexColor('#4f46e5'),
-            spaceAfter=30,
+            fontSize=24,
+            textColor=HexColor('#DC2626'),
+            spaceAfter=25,
             fontName='Helvetica-Bold',
             alignment=TA_LEFT
         )
@@ -1144,174 +1174,222 @@ async def download_pdf(report_id: str):
         heading_style = ParagraphStyle(
             'CustomHeading',
             parent=styles['Heading2'],
-            fontSize=20,
-            textColor=HexColor('#4f46e5'),
-            spaceAfter=15,
-            spaceBefore=30,
+            fontSize=18,
+            textColor=HexColor('#111827'),
+            spaceAfter=12,
+            spaceBefore=25,
             fontName='Helvetica-Bold',
-            borderWidth=0,
-            borderPadding=0,
-            borderColor=HexColor('#e0e7ff'),
-            borderPaddingBottom=5
+            alignment=TA_LEFT
         )
         
         # Subheading style
         subheading_style = ParagraphStyle(
             'CustomSubheading',
             parent=styles['Heading3'],
-            fontSize=16,
-            textColor=HexColor('#4b5563'),
-            spaceAfter=12,
-            spaceBefore=20,
+            fontSize=14,
+            textColor=HexColor('#111827'),
+            spaceAfter=10,
+            spaceBefore=18,
             fontName='Helvetica-Bold'
         )
         
-        # Body text style (dyslexia-friendly: larger font, more spacing)
+        # Body text style (professional, readable)
         body_style = ParagraphStyle(
             'CustomBody',
             parent=styles['Normal'],
-            fontSize=14,
-            leading=25,  # Line spacing (1.8x font size)
-            textColor=HexColor('#1f2937'),
-            spaceAfter=18,
+            fontSize=11,
+            leading=16,
+            textColor=HexColor('#111827'),
+            spaceAfter=12,
             fontName='Helvetica',
             alignment=TA_LEFT
         )
         
-        # Big idea style
-        big_idea_style = ParagraphStyle(
-            'BigIdea',
-            parent=body_style,
-            fontSize=15,
-            leading=27,
-            spaceAfter=25,
-            leftIndent=0,
-            rightIndent=0
-        )
-        
-        # Chapter number style
-        chapter_num_style = ParagraphStyle(
-            'ChapterNum',
-            parent=styles['Normal'],
-            fontSize=11,
-            textColor=HexColor('#4f46e5'),
-            fontName='Helvetica-Bold',
-            spaceAfter=8
-        )
-        
-        # Add title
-        story.append(Paragraph(unescape(topic), title_style))
-        story.append(Spacer(1, 20))
-        
-        # Add Big Idea section
-        if topic_definition:
-            story.append(Paragraph("<b>The Big Idea</b>", heading_style))
-            story.append(Spacer(1, 10))
-            # Add background box effect with table
-            big_idea_table = Table(
-                [[Paragraph(unescape(topic_definition), big_idea_style)]],
-                colWidths=[doc.width],
-                style=TableStyle([
-                    ('BACKGROUND', (0, 0), (-1, -1), HexColor('#f9fafb')),
-                    ('LEFTPADDING', (0, 0), (-1, -1), 25),
-                    ('RIGHTPADDING', (0, 0), (-1, -1), 25),
-                    ('TOPPADDING', (0, 0), (-1, -1), 20),
-                    ('BOTTOMPADDING', (0, 0), (-1, -1), 20),
-                    ('LEFTPADDING', (0, 0), (0, 0), 25),
-                    ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-                ])
-            )
-            story.append(big_idea_table)
-            story.append(Spacer(1, 30))
-        
-        # Add chapters
-        if curriculum:
-            for idx, chapter in enumerate(curriculum, 1):
-                # Chapter number
-                story.append(Paragraph(
-                    f"CHAPTER {idx} OF {len(curriculum)}",
-                    chapter_num_style
-                ))
-                
-                # Chapter title
-                story.append(Paragraph(unescape(chapter.get('title', 'Chapter')), heading_style))
-                story.append(Spacer(1, 15))
-                
-                # Chapter image
-                if chapter.get('image_url'):
-                    try:
-                        # Extract base64 image
-                        img_data = chapter['image_url']
-                        if img_data.startswith('data:image'):
-                            # Extract base64 part
-                            base64_data = img_data.split(',')[1]
-                            img_bytes = base64.b64decode(base64_data)
-                            
-                            # Create image from bytes
-                            img_buffer = BytesIO(img_bytes)
-                            img = Image(img_buffer, width=15*cm, height=8.5*cm)  # 16:9 aspect ratio
-                            story.append(img)
-                            story.append(Spacer(1, 20))
-                    except Exception as e:
-                        print(f"Error adding image: {e}")
-                        # Continue without image
-                
-                # Chapter content
-                content = chapter.get('content', '')
-                if content:
-                    # Strip HTML tags but preserve structure, convert to plain text with line breaks
-                    # Simple HTML to text conversion
-                    content = re.sub(r'<h[1-6][^>]*>', '<b>', content)
-                    content = re.sub(r'</h[1-6]>', '</b><br/>', content)
-                    content = re.sub(r'<p[^>]*>', '', content)
-                    content = re.sub(r'</p>', '<br/><br/>', content)
-                    content = re.sub(r'<br\s*/?>', '<br/>', content)
-                    content = re.sub(r'<strong[^>]*>', '<b>', content)
-                    content = re.sub(r'</strong>', '</b>', content)
-                    content = re.sub(r'<em[^>]*>', '<i>', content)
-                    content = re.sub(r'</em>', '</i>', content)
-                    content = re.sub(r'<ul[^>]*>', '', content)
-                    content = re.sub(r'</ul>', '', content)
-                    content = re.sub(r'<ol[^>]*>', '', content)
-                    content = re.sub(r'</ol>', '', content)
-                    content = re.sub(r'<li[^>]*>', '• ', content)
-                    content = re.sub(r'</li>', '<br/>', content)
-                    content = re.sub(r'<[^>]+>', '', content)  # Remove remaining tags
-                    content = unescape(content)
-                    
-                    # Split into paragraphs and add
-                    paragraphs = content.split('<br/><br/>')
-                    for para in paragraphs:
-                        para = para.strip()
-                        if para:
-                            # Replace <br/> with line breaks
-                            para = para.replace('<br/>', '<br/>')
-                            story.append(Paragraph(para, body_style))
-                            story.append(Spacer(1, 12))
-                
-                # Add spacing between chapters
-                if idx < len(curriculum):
-                    story.append(PageBreak())
-        
-        # Add Smart Review section if available
-        if curriculum and curriculum[0].get('review_content'):
-            story.append(PageBreak())
-            story.append(Paragraph("Smart Review: Key Takeaways", heading_style))
+        if is_analysis_report:
+            # ANALYSIS REPORT PDF GENERATION
+            story.append(Paragraph(unescape(topic), title_style))
             story.append(Spacer(1, 15))
             
-            review_table = Table(
-                [[Paragraph(unescape(curriculum[0]['review_content']), body_style)]],
-                colWidths=[doc.width],
-                style=TableStyle([
-                    ('BACKGROUND', (0, 0), (-1, -1), HexColor('#fffbeb')),
-                    ('LEFTPADDING', (0, 0), (-1, -1), 25),
-                    ('RIGHTPADDING', (0, 0), (-1, -1), 25),
-                    ('TOPPADDING', (0, 0), (-1, -1), 20),
-                    ('BOTTOMPADDING', (0, 0), (-1, -1), 20),
-                    ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-                ])
-            )
-            story.append(review_table)
+            # Add confidence score
+            if confidence_score:
+                confidence_text = f"Confidence Rating: {confidence_score}/10"
+                story.append(Paragraph(confidence_text, subheading_style))
+                story.append(Spacer(1, 15))
+            
+            # Add infographic if available
+            if infographic_url and infographic_url.startswith('data:image'):
+                try:
+                    base64_data = infographic_url.split(',')[1]
+                    img_bytes = base64.b64decode(base64_data)
+                    img_buffer = BytesIO(img_bytes)
+                    img = Image(img_buffer, width=16*cm, height=9*cm)  # 16:9 aspect ratio
+                    story.append(img)
+                    story.append(Spacer(1, 20))
+                except Exception as e:
+                    print(f"Error adding infographic: {e}")
+            
+            # Add Executive Summary
+            story.append(Paragraph("<b>EXECUTIVE SUMMARY</b>", heading_style))
+            story.append(Spacer(1, 10))
+            
+            # Process summary text - convert markdown to formatted paragraphs
+            if summary_text:
+                # Split by sections
+                sections = re.split(r'(?=###|##|#)', summary_text)
+                for section in sections:
+                    section = section.strip()
+                    if not section:
+                        continue
+                    
+                    # Check if it's a header
+                    if section.startswith('###'):
+                        header_text = re.sub(r'^###\s+', '', section).strip()
+                        # Remove emojis
+                        header_text = re.sub(r'[📰🎯📊⚖️🧠📝🔍📋]', '', header_text).strip()
+                        story.append(Paragraph(f"<b>{unescape(header_text)}</b>", subheading_style))
+                    elif section.startswith('##'):
+                        header_text = re.sub(r'^##\s+', '', section).strip()
+                        header_text = re.sub(r'[📰🎯📊⚖️🧠📝🔍📋]', '', header_text).strip()
+                        story.append(Paragraph(f"<b>{unescape(header_text)}</b>", heading_style))
+                    else:
+                        # Regular content - split into paragraphs
+                        # Remove markdown formatting
+                        content = section
+                        content = re.sub(r'\*\*([^*]+)\*\*', r'<b>\1</b>', content)
+                        content = re.sub(r'^-\s+', '• ', content, flags=re.MULTILINE)
+                        content = re.sub(r'^\d+\.\s+', '', content, flags=re.MULTILINE)
+                        content = re.sub(r'^>\s+', '', content, flags=re.MULTILINE)
+                        
+                        # Split into paragraphs
+                        paragraphs = re.split(r'\n\n+', content)
+                        for para in paragraphs:
+                            para = para.strip()
+                            if para:
+                                # Convert line breaks
+                                para = para.replace('\n', '<br/>')
+                                story.append(Paragraph(unescape(para), body_style))
+                                story.append(Spacer(1, 8))
+            
+        else:
+            # LEARNING REPORT PDF GENERATION (existing code)
+            curriculum = data.get("curriculum", [])
+            topic_definition = data.get("topic_definition", "")
+            
+            # Try to extract from HTML if not in data
+            if not curriculum:
+                chapter_matches = re.finditer(
+                    r'<div[^>]*class="[^"]*chapter-card[^"]*"[^>]*>.*?<h2[^>]*>(.*?)</h2>.*?<div[^>]*class="[^"]*chapter-content[^"]*"[^>]*>(.*?)</div>',
+                    html_content,
+                    re.DOTALL
+                )
+                for match in chapter_matches:
+                    chapter_title = re.sub(r'<[^>]+>', '', match.group(1)).strip()
+                    chapter_content = match.group(2)
+                    curriculum.append({
+                        'title': chapter_title,
+                        'content': chapter_content,
+                        'image_url': ''
+                    })
+                
+                big_idea_match = re.search(r'<p[^>]*class="[^"]*big-idea[^"]*"[^>]*>(.*?)</p>', html_content, re.DOTALL)
+                if big_idea_match and not topic_definition:
+                    topic_definition = re.sub(r'<[^>]+>', '', big_idea_match.group(1)).strip()
+            
+            # Add title
+            story.append(Paragraph(unescape(topic), title_style))
+            story.append(Spacer(1, 20))
+            
+            # Add Big Idea section
+            if topic_definition:
+                story.append(Paragraph("<b>The Big Idea</b>", heading_style))
+                story.append(Spacer(1, 10))
+                big_idea_table = Table(
+                    [[Paragraph(unescape(topic_definition), body_style)]],
+                    colWidths=[doc.width],
+                    style=TableStyle([
+                        ('BACKGROUND', (0, 0), (-1, -1), HexColor('#f9fafb')),
+                        ('LEFTPADDING', (0, 0), (-1, -1), 25),
+                        ('RIGHTPADDING', (0, 0), (-1, -1), 25),
+                        ('TOPPADDING', (0, 0), (-1, -1), 20),
+                        ('BOTTOMPADDING', (0, 0), (-1, -1), 20),
+                        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                    ])
+                )
+                story.append(big_idea_table)
+                story.append(Spacer(1, 30))
+            
+            # Add chapters
+            if curriculum:
+                for idx, chapter in enumerate(curriculum, 1):
+                    story.append(Paragraph(f"<b>CHAPTER {idx} OF {len(curriculum)}</b>", subheading_style))
+                    story.append(Paragraph(unescape(chapter.get('title', 'Chapter')), heading_style))
+                    story.append(Spacer(1, 15))
+                    
+                    # Chapter image
+                    if chapter.get('image_url'):
+                        try:
+                            img_data = chapter['image_url']
+                            if img_data.startswith('data:image'):
+                                base64_data = img_data.split(',')[1]
+                                img_bytes = base64.b64decode(base64_data)
+                                img_buffer = BytesIO(img_bytes)
+                                img = Image(img_buffer, width=15*cm, height=8.5*cm)
+                                story.append(img)
+                                story.append(Spacer(1, 20))
+                        except Exception as e:
+                            print(f"Error adding image: {e}")
+                    
+                    # Chapter content
+                    content = chapter.get('content', '')
+                    if content:
+                        content = re.sub(r'<h[1-6][^>]*>', '<b>', content)
+                        content = re.sub(r'</h[1-6]>', '</b><br/>', content)
+                        content = re.sub(r'<p[^>]*>', '', content)
+                        content = re.sub(r'</p>', '<br/><br/>', content)
+                        content = re.sub(r'<br\s*/?>', '<br/>', content)
+                        content = re.sub(r'<strong[^>]*>', '<b>', content)
+                        content = re.sub(r'</strong>', '</b>', content)
+                        content = re.sub(r'<em[^>]*>', '<i>', content)
+                        content = re.sub(r'</em>', '</i>', content)
+                        content = re.sub(r'<ul[^>]*>', '', content)
+                        content = re.sub(r'</ul>', '', content)
+                        content = re.sub(r'<ol[^>]*>', '', content)
+                        content = re.sub(r'</ol>', '', content)
+                        content = re.sub(r'<li[^>]*>', '• ', content)
+                        content = re.sub(r'</li>', '<br/>', content)
+                        content = re.sub(r'<[^>]+>', '', content)
+                        content = unescape(content)
+                        
+                        paragraphs = content.split('<br/><br/>')
+                        for para in paragraphs:
+                            para = para.strip()
+                            if para:
+                                para = para.replace('<br/>', '<br/>')
+                                story.append(Paragraph(para, body_style))
+                                story.append(Spacer(1, 12))
+                    
+                    if idx < len(curriculum):
+                        story.append(PageBreak())
+            
+            # Add Smart Review section if available
+            if curriculum and curriculum[0].get('review_content'):
+                story.append(PageBreak())
+                story.append(Paragraph("Smart Review: Key Takeaways", heading_style))
+                story.append(Spacer(1, 15))
+                
+                review_table = Table(
+                    [[Paragraph(unescape(curriculum[0]['review_content']), body_style)]],
+                    colWidths=[doc.width],
+                    style=TableStyle([
+                        ('BACKGROUND', (0, 0), (-1, -1), HexColor('#fffbeb')),
+                        ('LEFTPADDING', (0, 0), (-1, -1), 25),
+                        ('RIGHTPADDING', (0, 0), (-1, -1), 25),
+                        ('TOPPADDING', (0, 0), (-1, -1), 20),
+                        ('BOTTOMPADDING', (0, 0), (-1, -1), 20),
+                        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                    ])
+                )
+                story.append(review_table)
         
         # Build PDF
         doc.build(story)
@@ -1439,34 +1517,23 @@ async def generate_report_task(
         else:
             # --- Multi-Agent Critical Analysis Pipeline ---
             
-            # Agent 1: Reconnaissance Scanner
-            report_store[report_id]["message"] = "🔎 Agent 1: Scanning article..."
+            # Progress callback function
+            async def update_progress(message: str):
+                report_store[report_id]["message"] = message
+                await asyncio.sleep(0.1)  # Allow UI to update
             
-            # Agent 2: Extraction Engine  
-            # Agent 3: Type 2 Challenger
-            # Agent 4: Synthesis Composer
-            # (All handled in analyze_article function with progress updates)
-            
+            # Run analysis with progress updates
             analysis_data = await analyze_article(
                 article_text=article_text,
                 article_title=article_title,
-                article_url=article_url
+                article_url=article_url,
+                progress_callback=update_progress
             )
-            
-            # Update progress for agents
-            report_store[report_id]["message"] = "⛏️ Agent 2: Extracting evidence..."
-            await asyncio.sleep(0.1)  # Allow UI to update
-            
-            report_store[report_id]["message"] = "😈 Agent 3: Critical challenge..."
-            await asyncio.sleep(0.1)
-            
-            report_store[report_id]["message"] = "🎀 Agent 4: Composing synthesis..."
-            await asyncio.sleep(0.1)
             
             # Generate infographic
             infographic_url = ""
             if generate_images:
-                report_store[report_id]["message"] = "🎨 Generating infographic..."
+                await update_progress("🎨 Generating infographic...")
                 
                 infographic_prompt = analysis_data.get('infographic_prompt', '')
                 if infographic_prompt:
@@ -1485,7 +1552,7 @@ async def generate_report_task(
                         # Continue without infographic
             
             # Generate HTML
-            report_store[report_id]["message"] = "📋 Compiling final report..."
+            await update_progress("📋 Compiling final report...")
             html = report_generator.generate_analysis_html(analysis_data, infographic_url)
             topic_title = article_title
         

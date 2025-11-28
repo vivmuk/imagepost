@@ -537,9 +537,15 @@ def build_summary_graph():
 
 # --- Convenience Function ---
 
-async def analyze_article(article_text: str, article_title: str = "", article_url: str = "") -> dict:
+async def analyze_article(article_text: str, article_title: str = "", article_url: str = "", progress_callback=None) -> dict:
     """
     Run the full 4-agent analysis pipeline on an article.
+    
+    Args:
+        article_text: The full text of the article
+        article_title: Title of the article
+        article_url: URL of the article (if applicable)
+        progress_callback: Optional callback function(report_id, message) to update progress
     
     Returns a dict with all agent outputs and final summary.
     """
@@ -560,17 +566,38 @@ async def analyze_article(article_text: str, article_title: str = "", article_ur
         is_complete=False
     )
     
-    final_state = await graph.ainvoke(initial_state)
+    # We'll manually invoke each step to send progress updates
+    agents = SummaryAgents()
+    
+    # Agent 1
+    if progress_callback:
+        await progress_callback("🔎 Agent 1: Scanning article...")
+    state = await agents.reconnaissance_scanner(initial_state)
+    
+    # Agent 2
+    if progress_callback:
+        await progress_callback("⛏️ Agent 2: Extracting key points and evidence...")
+    state = await agents.extraction_engine(state)
+    
+    # Agent 3
+    if progress_callback:
+        await progress_callback("😈 Agent 3: Critical challenge and bias detection...")
+    state = await agents.type2_challenger(state)
+    
+    # Agent 4
+    if progress_callback:
+        await progress_callback("🎀 Agent 4: Composing final synthesis...")
+    state = await agents.synthesis_composer(state)
     
     return {
         "title": article_title,
         "url": article_url,
-        "recon_output": final_state["recon_output"],
-        "extraction_output": final_state["extraction_output"],
-        "challenger_output": final_state["challenger_output"],
-        "synthesis_output": final_state["synthesis_output"],
-        "final_summary": final_state["final_summary"],
-        "confidence_score": final_state["confidence_score"],
-        "infographic_prompt": final_state["infographic_prompt"]
+        "recon_output": state["recon_output"],
+        "extraction_output": state["extraction_output"],
+        "challenger_output": state["challenger_output"],
+        "synthesis_output": state["synthesis_output"],
+        "final_summary": state["final_summary"],
+        "confidence_score": state["confidence_score"],
+        "infographic_prompt": state["infographic_prompt"]
     }
 

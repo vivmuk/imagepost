@@ -824,10 +824,10 @@ class ReportGenerator:
             margin: 25px 0;
         }
         
-        /* Print Button */
+        /* Print Button - moved to bottom */
         .print-btn {
             position: fixed;
-            top: 20px;
+            bottom: 20px;
             right: 20px;
             background: var(--primary);
             color: white;
@@ -838,6 +838,7 @@ class ReportGenerator:
             font-weight: 600;
             cursor: pointer;
             z-index: 100;
+            box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
         }
         
         .print-btn:hover {
@@ -887,8 +888,6 @@ class ReportGenerator:
     </style>
 </head>
 <body>
-    <button class="print-btn" onclick="window.print()">Save as PDF</button>
-    
     <div class="container">
         <header>
             <h1>{{ title }}</h1>
@@ -973,78 +972,105 @@ class ReportGenerator:
         <footer>
             <p>Multi-Agent Critical Analysis | Generated {{ generated_date }} | © {{ year }}</p>
         </footer>
+        
+        <button class="print-btn" onclick="window.print()">Save as PDF</button>
     </div>
     
     <script>
-        // Attach functions to window for global access
-        window.toggleAgent = function(header) {
-            const content = header.nextElementSibling;
-            const toggle = header.querySelector('.agent-toggle');
-            
-            if (content) {
-                content.classList.toggle('open');
-            }
-            if (toggle) {
-                toggle.classList.toggle('open');
-            }
-        };
-        
-        window.downloadInfographic = function() {
-            const img = document.getElementById('infographic-image');
-            if (!img) return;
-            
-            const link = document.createElement('a');
-            link.href = img.src;
-            link.download = 'article_summary_infographic.webp';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        };
-        
-        // Format markdown in summary
+        // Attach functions to window for global access - MUST be in global scope
         (function() {
-            const summaryContent = document.getElementById('summary-content');
-            if (summaryContent) {
-                let html = summaryContent.innerHTML;
+            window.toggleAgent = function(header) {
+                if (!header) return;
+                const content = header.nextElementSibling;
+                const toggle = header.querySelector('.agent-toggle');
                 
-                // Escape any HTML first
-                html = html.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                if (content) {
+                    content.classList.toggle('open');
+                }
+                if (toggle) {
+                    toggle.classList.toggle('open');
+                }
+            };
+            
+            window.downloadInfographic = function() {
+                const img = document.getElementById('infographic-image');
+                if (!img) return;
                 
-                // Convert ### headers
-                html = html.replace(/^### (.+)$/gm, '</p><h3>$1</h3><p>');
+                const link = document.createElement('a');
+                link.href = img.src;
+                link.download = 'article_summary_infographic.webp';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            };
+        })();
+        
+        // Format markdown in summary - run after DOM is ready
+        (function() {
+            function formatMarkdown() {
+                const summaryContent = document.getElementById('summary-content');
+                if (!summaryContent) return;
                 
-                // Convert **bold**
-                html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+                let text = summaryContent.textContent || summaryContent.innerText || '';
                 
-                // Convert > blockquotes  
-                html = html.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>');
+                // Convert markdown to HTML
+                // Headers
+                text = text.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+                text = text.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+                text = text.replace(/^# (.+)$/gm, '<h1>$1</h1>');
                 
-                // Convert --- to hr
-                html = html.replace(/^---$/gm, '</p><hr><p>');
+                // Bold
+                text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
                 
-                // Convert - lists (simple)
-                html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
+                // Blockquotes
+                text = text.replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>');
                 
-                // Convert numbered lists
-                html = html.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+                // Horizontal rules
+                text = text.replace(/^---$/gm, '<hr>');
                 
-                // Wrap in paragraph
-                html = '<p>' + html + '</p>';
+                // Lists - numbered
+                text = text.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
                 
-                // Clean up empty paragraphs
-                html = html.replace(/<p>\s*<\/p>/g, '');
-                html = html.replace(/<p>\s*<h3>/g, '<h3>');
-                html = html.replace(/<\/h3>\s*<\/p>/g, '</h3>');
-                html = html.replace(/<p>\s*<hr>/g, '<hr>');
-                html = html.replace(/<hr>\s*<\/p>/g, '<hr>');
-                html = html.replace(/<p>\s*<li>/g, '<ul><li>');
-                html = html.replace(/<\/li>\s*<\/p>/g, '</li></ul>');
+                // Lists - bullet
+                text = text.replace(/^- (.+)$/gm, '<li>$1</li>');
                 
-                // Convert newlines to breaks within paragraphs
-                html = html.replace(/\n\n/g, '</p><p>');
-                html = html.replace(/\n/g, '<br>');
+                // Wrap consecutive list items in ul
+                text = text.replace(/(<li>.*<\/li>\n?)+/g, function(match) {
+                    return '<ul>' + match + '</ul>';
+                });
                 
-                summaryContent.innerHTML = html;
+                // Split into paragraphs (double newlines)
+                let paragraphs = text.split(/\n\n+/);
+                paragraphs = paragraphs.map(p => {
+                    p = p.trim();
+                    if (!p) return '';
+                    // If it doesn't start with a tag, wrap in p
+                    if (!p.match(/^<[hul]/)) {
+                        return '<p>' + p + '</p>';
+                    }
+                    return p;
+                });
+                
+                text = paragraphs.join('\n');
+                
+                // Clean up
+                text = text.replace(/<p>\s*<\/p>/g, '');
+                text = text.replace(/<p>\s*(<[hul])/g, '$1');
+                text = text.replace(/(<\/[hul]>)\s*<\/p>/g, '$1');
+                
+                // Convert single newlines to breaks within paragraphs
+                text = text.replace(/(<p>.*?)(\n)(.*?<\/p>)/g, function(match, start, nl, end) {
+                    return start + end.replace(/\n/g, '<br>');
+                });
+                
+                summaryContent.innerHTML = text;
+            }
+            
+            // Run when DOM is ready
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', formatMarkdown);
+            } else {
+                formatMarkdown();
             }
         })();
     </script>
