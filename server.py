@@ -608,8 +608,31 @@ async def root():
 
             <div id="visual-tab" class="tab-content">
                 <div class="input-group">
+                    <label>Input Source</label>
+                    <div class="radio-cards" style="grid-template-columns: 1fr 1fr;">
+                        <label class="radio-card selected" onclick="toggleVisualSource('url', this)">
+                            <input type="radio" name="visualSourceType" value="url" checked>
+                            <div class="card-content">
+                                <span class="card-title">URL</span>
+                            </div>
+                        </label>
+                        <label class="radio-card" onclick="toggleVisualSource('text', this)">
+                            <input type="radio" name="visualSourceType" value="text">
+                            <div class="card-content">
+                                <span class="card-title">Direct Text</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div id="visualUrlGroup" class="input-group">
                     <label>Article URL</label>
                     <input type="url" id="visualUrlInput" placeholder="https://example.com/article">
+                </div>
+
+                <div id="visualTextGroup" class="input-group" style="display: none;">
+                    <label>Article Text</label>
+                    <textarea id="visualTextInput" placeholder="Paste article text here..." style="height: 150px;"></textarea>
                 </div>
                 
                 <div class="input-group">
@@ -620,10 +643,10 @@ async def root():
                 </div>
                 
                 <div class="input-group">
-                    <label>Infographic Image Model</label>
-                    <select id="imageModelSelect" style="width: 100%; padding: 0.75rem; border: 2px solid var(--text); background: white; font-family: var(--font); font-size: 1rem;">
-                        <option value="flux-dev">Flux Dev</option>
-                    </select>
+                    <label>Visual Style</label>
+                    <div style="padding: 0.75rem; border: 1px solid var(--border); background: #f9fafb; border-radius: 6px; color: #666; font-size: 0.9rem;">
+                        🎨 Whimsical Watercolor Infographic (Powered by Nano Banana Pro)
+                    </div>
                 </div>
                 
                 <p style="margin-bottom: 2rem; color: #666; font-size: 0.9rem;">
@@ -675,6 +698,17 @@ async def root():
             label.querySelector('input').checked = true;
         }
 
+        function toggleVisualSource(type, label) {
+            selectRadio(label);
+            if (type === 'url') {
+                document.getElementById('visualUrlGroup').style.display = 'block';
+                document.getElementById('visualTextGroup').style.display = 'none';
+            } else {
+                document.getElementById('visualUrlGroup').style.display = 'none';
+                document.getElementById('visualTextGroup').style.display = 'block';
+            }
+        }
+
         function switchTab(type) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
@@ -705,7 +739,7 @@ async def root():
             
             try {
                 let endpoint = '';
-                let body = null; // Using null to check if we need FormData
+                let body = null;
                 let isFormData = false;
                 
                 if (type === 'url') {
@@ -738,17 +772,23 @@ async def root():
                     body = { topic: topic, education_level: educationLevel };
                 } else if (type === 'visual') {
                     endpoint = '/api/visual_summary';
-                    const url = document.getElementById('visualUrlInput').value;
+                    const sourceType = document.querySelector('input[name="visualSourceType"]:checked').value;
+                    let source = '';
+                    
+                    if (sourceType === 'url') {
+                        source = document.getElementById('visualUrlInput').value;
+                        if (!source) throw new Error("Please enter a URL");
+                    } else {
+                        source = document.getElementById('visualTextInput').value;
+                        if (!source) throw new Error("Please enter article text");
+                    }
+                    
                     const textModel = document.getElementById('textModelSelect').value;
-                    const imageModel = document.getElementById('imageModelSelect').value;
                     
-                    if (!url) throw new Error("Please enter a URL");
-                    
-                    // Using FormData for visual summary to match server implementation
                     const formData = new FormData();
-                    formData.append('source', url);
+                    formData.append('source', source);
+                    formData.append('source_type', sourceType);
                     formData.append('text_model', textModel);
-                    formData.append('image_model', imageModel);
                     body = formData;
                     isFormData = true;
                 }
@@ -927,6 +967,7 @@ async def root():
             document.getElementById('textContent').value = '';
             document.getElementById('learnInput').value = '';
             document.getElementById('visualUrlInput').value = '';
+            document.getElementById('visualTextInput').value = '';
             document.getElementById('educationLevel').value = 'High School';
         }
 
@@ -938,11 +979,10 @@ async def root():
                 const models = data.data;
                 
                 const textSelect = document.getElementById('textModelSelect');
-                const imageSelect = document.getElementById('imageModelSelect');
+                // Image select is removed
                 
                 // Clear existing options
                 textSelect.innerHTML = '';
-                imageSelect.innerHTML = '';
                 
                 models.forEach(model => {
                     const option = document.createElement('option');
@@ -951,17 +991,12 @@ async def root():
                     
                     if (model.type === 'text') {
                         textSelect.appendChild(option);
-                    } else if (model.type === 'image') {
-                        imageSelect.appendChild(option);
                     }
                 });
                 
                 // Set defaults if available
                 if (textSelect.querySelector('option[value="llama-3.3-70b"]')) {
                     textSelect.value = "llama-3.3-70b";
-                }
-                if (imageSelect.querySelector('option[value="flux-dev"]')) {
-                    imageSelect.value = "flux-dev";
                 }
                 
             } catch (e) {
@@ -1538,8 +1573,8 @@ async def download_pdf(report_id: str):
 async def create_visual_summary(
     background_tasks: BackgroundTasks,
     source: str = Form(...),
-    text_model: str = Form("llama-3.3-70b"),
-    image_model: str = Form("flux-dev")
+    source_type: str = Form("url"),
+    text_model: str = Form("llama-3.3-70b")
 ):
     """Start a background task to generate a visual summary"""
     report_id = f"visual_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
@@ -1555,8 +1590,9 @@ async def create_visual_summary(
         generate_visual_summary_task,
         report_id,
         source,
+        source_type,
         text_model,
-        image_model
+        "nano-banana-pro"
     )
     
     return {"report_id": report_id, "status": "processing"}
@@ -1564,6 +1600,7 @@ async def create_visual_summary(
 async def generate_visual_summary_task(
     report_id: str,
     source: str,
+    source_type: str,
     text_model: str,
     image_model: str
 ):
@@ -1575,12 +1612,23 @@ async def generate_visual_summary_task(
     
     try:
         scraper = ContentScraper()
-        image_gen = VeniceImageGenerator()
         
         # 1. Extract content
-        report_store[report_id]["message"] = "Extracting content..."
-        content = await scraper.extract(source)
-        text = content.text
+        text = ""
+        topic = "Visual Summary"
+        
+        if source_type == "url":
+            report_store[report_id]["message"] = "Extracting content from URL..."
+            content = await scraper.extract(source)
+            text = content.text
+            topic = content.title
+        else:
+            report_store[report_id]["message"] = "Processing text content..."
+            text = source
+            # Try to extract a title from the first line if it looks like one
+            lines = text.split('\n')
+            if lines and len(lines[0]) < 100:
+                topic = lines[0]
         
         # 2. Summarize with Rubric
         report_store[report_id]["message"] = f"Summarizing with {text_model} using Expert Rubric..."
@@ -1654,7 +1702,7 @@ async def generate_visual_summary_task(
             "status": "completed",
             "result": html_result, # We'll inject this into the result area
             "message": "Visual Summary Complete!",
-            "topic": content.title
+            "topic": topic
         }
         
     except Exception as e:
