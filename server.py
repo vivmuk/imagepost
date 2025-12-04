@@ -1658,7 +1658,7 @@ async def generate_visual_summary_task(
                     "prompt": image_prompt,
                     "width": 1280,
                     "height": 720,  # Landscape 16:9 ratio
-                    "steps": 30,
+                    "steps": 1,  # Nano Banana Pro uses 1 step
                     "hide_watermark": True,
                     "return_binary": False 
                 }
