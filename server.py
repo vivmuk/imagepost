@@ -615,19 +615,14 @@ async def root():
                 <div class="input-group">
                     <label>Summary Model (Rubric Expert)</label>
                     <select id="textModelSelect" style="width: 100%; padding: 0.75rem; border: 2px solid var(--text); background: white; font-family: var(--font); font-size: 1rem;">
-                        <option value="llama-3.3-70b">Llama 3.3 70B (Recommended)</option>
-                        <option value="venice-uncensored">Venice Uncensored</option>
-                        <option value="mistral-31-24b">Mistral 3.1 24B</option>
-                        <option value="qwen3-235b">Qwen 3 235B</option>
+                        <option value="llama-3.3-70b">Llama 3.3 70B</option>
                     </select>
                 </div>
                 
                 <div class="input-group">
                     <label>Infographic Image Model</label>
                     <select id="imageModelSelect" style="width: 100%; padding: 0.75rem; border: 2px solid var(--text); background: white; font-family: var(--font); font-size: 1rem;">
-                        <option value="flux-dev" selected>Flux Dev (High Quality)</option>
-                        <option value="venice-sd35">Venice SD3.5</option>
-                        <option value="qwen-image">Qwen Image</option>
+                        <option value="flux-dev">Flux Dev</option>
                     </select>
                 </div>
                 
@@ -934,6 +929,48 @@ async def root():
             document.getElementById('visualUrlInput').value = '';
             document.getElementById('educationLevel').value = 'High School';
         }
+
+        async function loadModels() {
+            try {
+                const response = await fetch('/api/models');
+                if (!response.ok) return;
+                const data = await response.json();
+                const models = data.data;
+                
+                const textSelect = document.getElementById('textModelSelect');
+                const imageSelect = document.getElementById('imageModelSelect');
+                
+                // Clear existing options
+                textSelect.innerHTML = '';
+                imageSelect.innerHTML = '';
+                
+                models.forEach(model => {
+                    const option = document.createElement('option');
+                    option.value = model.id;
+                    option.textContent = model.name;
+                    
+                    if (model.type === 'text') {
+                        textSelect.appendChild(option);
+                    } else if (model.type === 'image') {
+                        imageSelect.appendChild(option);
+                    }
+                });
+                
+                // Set defaults if available
+                if (textSelect.querySelector('option[value="llama-3.3-70b"]')) {
+                    textSelect.value = "llama-3.3-70b";
+                }
+                if (imageSelect.querySelector('option[value="flux-dev"]')) {
+                    imageSelect.value = "flux-dev";
+                }
+                
+            } catch (e) {
+                console.error("Failed to load models:", e);
+            }
+        }
+
+        // Load models on page load
+        document.addEventListener('DOMContentLoaded', loadModels);
     </script>
 </body>
 </html>
@@ -1715,27 +1752,40 @@ async def generate_audio(text: str = Form(...), voice: str = Form("af_sky")):
 @app.get("/api/models")
 async def list_models():
     """List available models"""
-    from config import config
-    import httpx
-    api_key = config.venice.api_key
-    
-    if not api_key:
-        raise HTTPException(status_code=500, detail="Venice API key not configured")
-    
-    try:
-        # Return hardcoded list for now to be safe and fast
-        models = [
-            {"id": "venice-uncensored", "name": "Venice Uncensored", "type": "text"},
-            {"id": "llama-3.3-70b", "name": "Llama 3.3 70B", "type": "text"},
-            {"id": "qwen3-235b", "name": "Qwen 3 235B (Venice Large)", "type": "text"},
-            {"id": "mistral-31-24b", "name": "Mistral 3.1 24B", "type": "text"},
-            {"id": "flux-dev", "name": "Flux Dev (Image)", "type": "image"},
-            {"id": "venice-sd35", "name": "Venice SD3.5 (Image)", "type": "image"},
-            {"id": "qwen-image", "name": "Qwen Image", "type": "image"},
-        ]
-        return {"data": models}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    # Comprehensive list of models including betas and new releases
+    models = [
+        # Text Models
+        {"id": "venice-uncensored", "name": "Venice Uncensored 1.1", "type": "text"},
+        {"id": "llama-3.3-70b", "name": "Llama 3.3 70B", "type": "text"},
+        {"id": "qwen3-235b", "name": "Venice Large 1.1 (Qwen 235B)", "type": "text"},
+        {"id": "mistral-31-24b", "name": "Venice Medium (Mistral 24B)", "type": "text"},
+        {"id": "qwen3-4b", "name": "Venice Small (Qwen 4B)", "type": "text"},
+        {"id": "qwen3-235b-a22b-thinking-2507", "name": "Qwen 235B Thinking (Reasoning)", "type": "text"},
+        {"id": "deepseek-ai-DeepSeek-R1", "name": "DeepSeek R1", "type": "text"},
+        {"id": "deepseek-v3.2", "name": "DeepSeek V3.2", "type": "text"},
+        {"id": "gemini-3-pro-preview", "name": "Gemini 3 Pro Preview", "type": "text"},
+        {"id": "grok-41-fast", "name": "Grok 4.1 Fast", "type": "text"},
+        {"id": "llama-3.2-3b", "name": "Llama 3.2 3B", "type": "text"},
+        {"id": "hermes-3-llama-3.1-405b", "name": "Hermes 3 Llama 405B", "type": "text"},
+        {"id": "qwen3-next-80b", "name": "Qwen 3 Next 80B", "type": "text"},
+        {"id": "qwen3-coder-480b-a35b-instruct", "name": "Qwen 3 Coder 480B", "type": "text"},
+        {"id": "google-gemma-3-27b-it", "name": "Gemma 3 27B", "type": "text"},
+        {"id": "kimi-k2-thinking", "name": "Kimi K2 Thinking", "type": "text"},
+        {"id": "zai-org-glm-4.6", "name": "GLM 4.6", "type": "text"},
+        {"id": "openai-gpt-oss-120b", "name": "OpenAI GPT OSS 120B", "type": "text"},
+        
+        # Image Models
+        {"id": "flux-dev", "name": "Flux Dev (High Quality)", "type": "image"},
+        {"id": "nano-banana-pro", "name": "Nano Banana Pro", "type": "image"},
+        {"id": "venice-sd35", "name": "Venice SD3.5", "type": "image"},
+        {"id": "qwen-image", "name": "Qwen Image", "type": "image"},
+        {"id": "hidream", "name": "HiDream", "type": "image"},
+        {"id": "lustify-sdxl", "name": "Lustify SDXL", "type": "image"},
+        {"id": "lustify-v7", "name": "Lustify v7", "type": "image"},
+        {"id": "wai-Illustrious", "name": "Anime (WAI)", "type": "image"},
+        {"id": "z-image-turbo", "name": "Z-Image Turbo (Beta)", "type": "image"},
+    ]
+    return {"data": models}
 
     
     if not api_key:
