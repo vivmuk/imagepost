@@ -1656,8 +1656,8 @@ async def generate_visual_summary_task(
                 json={
                     "model": image_model,
                     "prompt": image_prompt,
-                    "width": 1024,
-                    "height": 1792, # 9:16 ratio for infographic
+                    "width": 1280,
+                    "height": 720,  # Landscape 16:9 ratio
                     "steps": 30,
                     "hide_watermark": True,
                     "return_binary": False 
