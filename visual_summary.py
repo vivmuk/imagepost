@@ -2,7 +2,6 @@ import asyncio
 from typing import Optional, Dict, Any
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
-from image_generator import VeniceImageGenerator
 
 # The Expert Rubric provided by the user
 RUBRIC_PROMPT = """

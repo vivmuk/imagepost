@@ -638,6 +638,7 @@ async def root():
                 <div class="input-group">
                     <label>Summary Model (Rubric Expert)</label>
                     <select id="textModelSelect" style="width: 100%; padding: 0.75rem; border: 2px solid var(--text); background: white; font-family: var(--font); font-size: 1rem;">
+                        <option value="grok-41-fast">Grok 4.1 Fast (Recommended)</option>
                         <option value="llama-3.3-70b">Llama 3.3 70B</option>
                     </select>
                 </div>
@@ -979,7 +980,6 @@ async def root():
                 const models = data.data;
                 
                 const textSelect = document.getElementById('textModelSelect');
-                // Image select is removed
                 
                 // Clear existing options
                 textSelect.innerHTML = '';
@@ -994,8 +994,10 @@ async def root():
                     }
                 });
                 
-                // Set defaults if available
-                if (textSelect.querySelector('option[value="llama-3.3-70b"]')) {
+                // Set grok-41-fast as default, fallback to llama-3.3-70b
+                if (textSelect.querySelector('option[value="grok-41-fast"]')) {
+                    textSelect.value = "grok-41-fast";
+                } else if (textSelect.querySelector('option[value="llama-3.3-70b"]')) {
                     textSelect.value = "llama-3.3-70b";
                 }
                 
@@ -1574,7 +1576,7 @@ async def create_visual_summary(
     background_tasks: BackgroundTasks,
     source: str = Form(...),
     source_type: str = Form("url"),
-    text_model: str = Form("llama-3.3-70b")
+    text_model: str = Form("grok-41-fast")
 ):
     """Start a background task to generate a visual summary"""
     report_id = f"visual_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
@@ -1607,11 +1609,12 @@ async def generate_visual_summary_task(
     """Background task for visual summary"""
     from scraper import ContentScraper
     from visual_summary import generate_rubric_summary, generate_image_prompt
-    from image_generator import VeniceImageGenerator
+    from config import config
     import base64
     
     try:
         scraper = ContentScraper()
+        api_key = config.venice.api_key
         
         # 1. Extract content
         text = ""
@@ -1632,20 +1635,16 @@ async def generate_visual_summary_task(
         
         # 2. Summarize with Rubric
         report_store[report_id]["message"] = f"Summarizing with {text_model} using Expert Rubric..."
-        summary_text = await generate_rubric_summary(text, model_id=text_model)
+        summary_text = await generate_rubric_summary(text, model_id=text_model, api_key=api_key)
         
         # 3. Generate Image Prompt
         report_store[report_id]["message"] = "Designing infographic prompt..."
-        image_prompt = await generate_image_prompt(summary_text)
+        image_prompt = await generate_image_prompt(summary_text, api_key=api_key)
         
         # 4. Generate Image
         report_store[report_id]["message"] = f"Painting infographic with {image_model} (this may take a moment)..."
-        # Use the existing image generator but with specific prompt
-        # We might need to modify VeniceImageGenerator to accept a model, 
-        # or just create a direct call here for simplicity since we want a specific model
         
         import httpx
-        from config import config
         
         async with httpx.AsyncClient(timeout=200.0) as client:
             img_response = await client.post(
@@ -1712,48 +1711,6 @@ async def generate_visual_summary_task(
             "status": "error",
             "message": f"Error: {str(e)}"
         }
-
-@app.post("/api/audio/generate")
-async def generate_audio(text: str = Form(...), voice: str = Form("af_sky")):
-    """Generate audio from text using Venice TTS API"""
-    import httpx
-    from config import config
-    
-    try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            response = await client.post(
-                "https://api.venice.ai/api/v1/audio/speech",
-                headers={
-                    "Authorization": f"Bearer {config.venice.api_key}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "input": text,
-                    "model": "tts-kokoro",
-                    "voice": voice,
-                    "response_format": "mp3"
-                }
-            )
-            
-            if response.status_code != 200:
-                raise HTTPException(
-                    status_code=response.status_code,
-                    detail=f"Audio generation failed: {response.text}"
-                )
-            
-            # Return base64 encoded audio
-            import base64
-            audio_b64 = base64.b64encode(response.content).decode('utf-8')
-            
-            return JSONResponse(content={
-                "audio": f"data:audio/mpeg;base64,{audio_b64}",
-                "format": "mp3"
-            })
-        
-    except httpx.TimeoutException:
-        raise HTTPException(status_code=504, detail="Audio generation timed out")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error generating audio: {str(e)}")
 
 @app.post("/api/audio/generate")
 async def generate_audio(text: str = Form(...), voice: str = Form("af_sky")):
