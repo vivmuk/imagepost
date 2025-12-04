@@ -494,6 +494,7 @@ async def root():
                 <button class="tab active" onclick="switchTab('url')">URL / Web</button>
                 <button class="tab" onclick="switchTab('text')">Direct Text</button>
                 <button class="tab" onclick="switchTab('learn')">Learn Topic</button>
+                <button class="tab" onclick="switchTab('visual')">Visual Summary</button>
             </div>
 
             <div id="url-tab" class="tab-content active">
@@ -604,6 +605,38 @@ async def root():
                 </p>
                 <button class="btn-generate" onclick="generateReport('learn')">Start Learning Journey</button>
             </div>
+
+            <div id="visual-tab" class="tab-content">
+                <div class="input-group">
+                    <label>Article URL</label>
+                    <input type="url" id="visualUrlInput" placeholder="https://example.com/article">
+                </div>
+                
+                <div class="input-group">
+                    <label>Summary Model (Rubric Expert)</label>
+                    <select id="textModelSelect" style="width: 100%; padding: 0.75rem; border: 2px solid var(--text); background: white; font-family: var(--font); font-size: 1rem;">
+                        <option value="llama-3.3-70b">Llama 3.3 70B (Recommended)</option>
+                        <option value="venice-uncensored">Venice Uncensored</option>
+                        <option value="mistral-31-24b">Mistral 3.1 24B</option>
+                        <option value="qwen3-235b">Qwen 3 235B</option>
+                    </select>
+                </div>
+                
+                <div class="input-group">
+                    <label>Infographic Image Model</label>
+                    <select id="imageModelSelect" style="width: 100%; padding: 0.75rem; border: 2px solid var(--text); background: white; font-family: var(--font); font-size: 1rem;">
+                        <option value="flux-dev" selected>Flux Dev (High Quality)</option>
+                        <option value="venice-sd35">Venice SD3.5</option>
+                        <option value="qwen-image">Qwen Image</option>
+                    </select>
+                </div>
+                
+                <p style="margin-bottom: 2rem; color: #666; font-size: 0.9rem;">
+                    Generates a research-backed "Expert Rubric" summary and paints a whimsical watercolor infographic.
+                </p>
+                
+                <button class="btn-generate" onclick="generateReport('visual')">Generate Visual Summary</button>
+            </div>
         </div>
 
         <div class="loading-container" id="loadingSection">
@@ -657,9 +690,12 @@ async def root():
             } else if (type === 'text') {
                 document.querySelector('.tab:nth-child(2)').classList.add('active');
                 document.getElementById('text-tab').classList.add('active');
-            } else {
+            } else if (type === 'learn') {
                 document.querySelector('.tab:nth-child(3)').classList.add('active');
                 document.getElementById('learn-tab').classList.add('active');
+            } else {
+                document.querySelector('.tab:nth-child(4)').classList.add('active');
+                document.getElementById('visual-tab').classList.add('active');
             }
         }
 
@@ -674,7 +710,8 @@ async def root():
             
             try {
                 let endpoint = '';
-                let body = {};
+                let body = null; // Using null to check if we need FormData
+                let isFormData = false;
                 
                 if (type === 'url') {
                     endpoint = '/api/summarize/url';
@@ -704,13 +741,33 @@ async def root():
                     const educationLevel = document.getElementById('educationLevel').value;
                     if (!topic) throw new Error("Please enter a topic");
                     body = { topic: topic, education_level: educationLevel };
+                } else if (type === 'visual') {
+                    endpoint = '/api/visual_summary';
+                    const url = document.getElementById('visualUrlInput').value;
+                    const textModel = document.getElementById('textModelSelect').value;
+                    const imageModel = document.getElementById('imageModelSelect').value;
+                    
+                    if (!url) throw new Error("Please enter a URL");
+                    
+                    // Using FormData for visual summary to match server implementation
+                    const formData = new FormData();
+                    formData.append('source', url);
+                    formData.append('text_model', textModel);
+                    formData.append('image_model', imageModel);
+                    body = formData;
+                    isFormData = true;
                 }
 
-                const response = await fetch(endpoint, {
+                const options = {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body)
-                });
+                    body: isFormData ? body : JSON.stringify(body)
+                };
+                
+                if (!isFormData) {
+                    options.headers = { 'Content-Type': 'application/json' };
+                }
+
+                const response = await fetch(endpoint, options);
 
                 if (!response.ok) throw new Error('Failed to start generation');
                 
@@ -874,6 +931,7 @@ async def root():
             document.getElementById('urlInput').value = '';
             document.getElementById('textContent').value = '';
             document.getElementById('learnInput').value = '';
+            document.getElementById('visualUrlInput').value = '';
             document.getElementById('educationLevel').value = 'High School';
         }
     </script>
@@ -1419,6 +1477,157 @@ async def download_pdf(report_id: str):
         raise HTTPException(status_code=500, detail=f"Error generating PDF: {str(e)}\n\n{error_details}")
 
 
+    
+    if not api_key:
+        raise HTTPException(status_code=500, detail="Venice API key not configured")
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            # Use hardcoded models list since we know what we want to support
+            models = [
+                {"id": "venice-uncensored", "name": "Venice Uncensored", "type": "text"},
+                {"id": "llama-3.3-70b", "name": "Llama 3.3 70B", "type": "text"},
+                {"id": "qwen3-235b", "name": "Qwen 3 235B (Venice Large)", "type": "text"},
+                {"id": "mistral-31-24b", "name": "Mistral 3.1 24B", "type": "text"},
+                {"id": "flux-dev", "name": "Flux Dev (Image)", "type": "image"},
+                {"id": "venice-sd35", "name": "Venice SD3.5 (Image)", "type": "image"},
+                {"id": "qwen-image", "name": "Qwen Image", "type": "image"},
+            ]
+            return {"data": models}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/visual_summary")
+async def create_visual_summary(
+    background_tasks: BackgroundTasks,
+    source: str = Form(...),
+    text_model: str = Form("llama-3.3-70b"),
+    image_model: str = Form("flux-dev")
+):
+    """Start a background task to generate a visual summary"""
+    report_id = f"visual_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    
+    report_store[report_id] = {
+        "status": "processing",
+        "created_at": datetime.now().isoformat(),
+        "type": "visual_summary",
+        "message": "Starting visual summary generation..."
+    }
+    
+    background_tasks.add_task(
+        generate_visual_summary_task,
+        report_id,
+        source,
+        text_model,
+        image_model
+    )
+    
+    return {"report_id": report_id, "status": "processing"}
+
+async def generate_visual_summary_task(
+    report_id: str,
+    source: str,
+    text_model: str,
+    image_model: str
+):
+    """Background task for visual summary"""
+    from scraper import ContentScraper
+    from visual_summary import generate_rubric_summary, generate_image_prompt
+    from image_generator import VeniceImageGenerator
+    import base64
+    
+    try:
+        scraper = ContentScraper()
+        image_gen = VeniceImageGenerator()
+        
+        # 1. Extract content
+        report_store[report_id]["message"] = "Extracting content..."
+        content = await scraper.extract(source)
+        text = content.text
+        
+        # 2. Summarize with Rubric
+        report_store[report_id]["message"] = f"Summarizing with {text_model} using Expert Rubric..."
+        summary_text = await generate_rubric_summary(text, model_id=text_model)
+        
+        # 3. Generate Image Prompt
+        report_store[report_id]["message"] = "Designing infographic prompt..."
+        image_prompt = await generate_image_prompt(summary_text)
+        
+        # 4. Generate Image
+        report_store[report_id]["message"] = f"Painting infographic with {image_model} (this may take a moment)..."
+        # Use the existing image generator but with specific prompt
+        # We might need to modify VeniceImageGenerator to accept a model, 
+        # or just create a direct call here for simplicity since we want a specific model
+        
+        import httpx
+        from config import config
+        
+        async with httpx.AsyncClient(timeout=200.0) as client:
+            img_response = await client.post(
+                "https://api.venice.ai/api/v1/image/generate",
+                headers={
+                    "Authorization": f"Bearer {config.venice.api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": image_model,
+                    "prompt": image_prompt,
+                    "width": 1024,
+                    "height": 1792, # 9:16 ratio for infographic
+                    "steps": 30,
+                    "hide_watermark": True,
+                    "return_binary": False 
+                }
+            )
+            
+            if img_response.status_code != 200:
+                raise Exception(f"Image generation failed: {img_response.text}")
+                
+            img_data = img_response.json()
+            b64_image = img_data['images'][0]
+            image_url = f"data:image/png;base64,{b64_image}"
+            
+        # 5. Compile Result
+        # We'll create a simple HTML wrapper for the result
+        from report_generator import markdown_to_html
+        
+        summary_html = markdown_to_html(summary_text)
+        
+        html_result = f"""
+        <div class="visual-summary-container">
+            <div class="visual-summary-image">
+                <h2>Visual Summary</h2>
+                <div class="image-wrapper">
+                    <img src="{image_url}" alt="Visual Summary Infographic" style="max-width: 100%; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+                    <br/>
+                    <a href="{image_url}" download="visual_summary.png" class="btn btn-primary" style="margin-top: 15px; display: inline-block;">Download Infographic</a>
+                </div>
+            </div>
+            
+            <div class="visual-summary-text" style="margin-top: 40px; padding: 30px; background: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb;">
+                <h2>Text Summary (Expert Rubric)</h2>
+                <div class="markdown-content">
+                    {summary_html}
+                </div>
+            </div>
+        </div>
+        """
+        
+        report_store[report_id] = {
+            "status": "completed",
+            "result": html_result, # We'll inject this into the result area
+            "message": "Visual Summary Complete!",
+            "topic": content.title
+        }
+        
+    except Exception as e:
+        import traceback
+        print(f"Error in visual summary: {traceback.format_exc()}")
+        report_store[report_id] = {
+            "status": "error",
+            "message": f"Error: {str(e)}"
+        }
+
 @app.post("/api/audio/generate")
 async def generate_audio(text: str = Form(...), voice: str = Form("af_sky")):
     """Generate audio from text using Venice TTS API"""
@@ -1460,6 +1669,93 @@ async def generate_audio(text: str = Form(...), voice: str = Form("af_sky")):
         raise HTTPException(status_code=504, detail="Audio generation timed out")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating audio: {str(e)}")
+
+@app.post("/api/audio/generate")
+async def generate_audio(text: str = Form(...), voice: str = Form("af_sky")):
+    """Generate audio from text using Venice TTS API"""
+    import httpx
+    from config import config
+    
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.post(
+                "https://api.venice.ai/api/v1/audio/speech",
+                headers={
+                    "Authorization": f"Bearer {config.venice.api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "input": text,
+                    "model": "tts-kokoro",
+                    "voice": voice,
+                    "response_format": "mp3"
+                }
+            )
+            
+            if response.status_code != 200:
+                raise HTTPException(
+                    status_code=response.status_code,
+                    detail=f"Audio generation failed: {response.text}"
+                )
+            
+            # Return base64 encoded audio
+            import base64
+            audio_b64 = base64.b64encode(response.content).decode('utf-8')
+            
+            return JSONResponse(content={
+                "audio": f"data:audio/mpeg;base64,{audio_b64}",
+                "format": "mp3"
+            })
+        
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="Audio generation timed out")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating audio: {str(e)}")
+
+@app.get("/api/models")
+async def list_models():
+    """List available models"""
+    from config import config
+    import httpx
+    api_key = config.venice.api_key
+    
+    if not api_key:
+        raise HTTPException(status_code=500, detail="Venice API key not configured")
+    
+    try:
+        # Return hardcoded list for now to be safe and fast
+        models = [
+            {"id": "venice-uncensored", "name": "Venice Uncensored", "type": "text"},
+            {"id": "llama-3.3-70b", "name": "Llama 3.3 70B", "type": "text"},
+            {"id": "qwen3-235b", "name": "Qwen 3 235B (Venice Large)", "type": "text"},
+            {"id": "mistral-31-24b", "name": "Mistral 3.1 24B", "type": "text"},
+            {"id": "flux-dev", "name": "Flux Dev (Image)", "type": "image"},
+            {"id": "venice-sd35", "name": "Venice SD3.5 (Image)", "type": "image"},
+            {"id": "qwen-image", "name": "Qwen Image", "type": "image"},
+        ]
+        return {"data": models}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    
+    if not api_key:
+        raise HTTPException(status_code=500, detail="Venice API key not configured")
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            # Use hardcoded models list since we know what we want to support
+            models = [
+                {"id": "venice-uncensored", "name": "Venice Uncensored", "type": "text"},
+                {"id": "llama-3.3-70b", "name": "Llama 3.3 70B", "type": "text"},
+                {"id": "qwen3-235b", "name": "Qwen 3 235B (Venice Large)", "type": "text"},
+                {"id": "mistral-31-24b", "name": "Mistral 3.1 24B", "type": "text"},
+                {"id": "flux-dev", "name": "Flux Dev (Image)", "type": "image"},
+                {"id": "venice-sd35", "name": "Venice SD3.5 (Image)", "type": "image"},
+                {"id": "qwen-image", "name": "Qwen Image", "type": "image"},
+            ]
+            return {"data": models}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 async def generate_report_task(
